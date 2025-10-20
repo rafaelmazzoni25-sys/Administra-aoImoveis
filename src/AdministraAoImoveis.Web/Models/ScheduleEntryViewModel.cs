@@ -7,6 +7,7 @@ public class ScheduleEntryViewModel
     public Guid Id { get; init; }
     public string Titulo { get; init; } = string.Empty;
     public string Tipo { get; init; } = string.Empty;
+    public string Setor { get; init; } = string.Empty;
     public string Responsavel { get; init; } = string.Empty;
     public DateTime Inicio { get; init; }
     public DateTime Fim { get; init; }
@@ -25,6 +26,7 @@ public class ScheduleEntryViewModel
             Id = entry.Id,
             Titulo = entry.Titulo,
             Tipo = entry.Tipo,
+            Setor = entry.Setor,
             Responsavel = entry.Responsavel,
             Inicio = entry.Inicio,
             Fim = entry.Fim,

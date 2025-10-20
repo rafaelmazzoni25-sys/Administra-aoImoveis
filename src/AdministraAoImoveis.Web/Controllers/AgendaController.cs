@@ -17,26 +17,150 @@ public class AgendaController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index([FromQuery] DateTime? inicio, [FromQuery] DateTime? fim, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(
+        [FromQuery] DateTime? inicio,
+        [FromQuery] DateTime? fim,
+        [FromQuery] string? modo,
+        [FromQuery] string? tipo,
+        [FromQuery] string? responsavel,
+        [FromQuery] string? setor,
+        CancellationToken cancellationToken)
     {
-        var start = inicio ?? DateTime.UtcNow.Date;
-        var end = fim ?? start.AddDays(7);
+        var viewMode = NormalizeViewMode(modo);
+        var normalizedStart = NormalizeDate(inicio) ?? EnsureUtc(DateTime.UtcNow.Date);
 
-        var compromissos = await _context.Agenda
-            .Where(a => a.Inicio <= end && a.Fim >= start)
+        DateTime start;
+        DateTime end;
+
+        switch (viewMode)
+        {
+            case AgendaViewMode.Semana:
+                start = EnsureUtc(normalizedStart.Date);
+                end = start.AddDays(7);
+                break;
+            case AgendaViewMode.Mes:
+                var baseDate = EnsureUtc(normalizedStart.Date);
+                start = new DateTime(baseDate.Year, baseDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                end = start.AddMonths(1);
+                break;
+            default:
+                start = normalizedStart;
+                end = NormalizeDate(fim) ?? start.AddDays(7);
+                if (end <= start)
+                {
+                    end = start.AddDays(7);
+                }
+                break;
+        }
+
+        var baseQuery = await _context.Agenda
+            .Where(a => a.Inicio < end && a.Fim > start)
             .OrderBy(a => a.Inicio)
             .ToListAsync(cancellationToken);
 
-        var compromissosModel = MapWithConflicts(compromissos);
+        var tipoFiltro = NormalizeFilter(tipo);
+        var responsavelFiltro = NormalizeFilter(responsavel);
+        var setorFiltro = NormalizeFilter(setor);
+
+        var disponiveisTipos = baseQuery
+            .Select(a => a.Tipo)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var disponiveisResponsaveis = baseQuery
+            .Select(a => a.Responsavel)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var disponiveisSetores = baseQuery
+            .Select(a => a.Setor)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var filtrados = baseQuery.AsEnumerable();
+
+        if (tipoFiltro is not null)
+        {
+            filtrados = filtrados.Where(a => string.Equals(a.Tipo, tipoFiltro, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (responsavelFiltro is not null)
+        {
+            filtrados = filtrados.Where(a => string.Equals(a.Responsavel, responsavelFiltro, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (setorFiltro is not null)
+        {
+            filtrados = filtrados.Where(a => string.Equals(a.Setor, setorFiltro, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var compromissosModel = MapWithConflicts(filtrados.ToList());
 
         var model = new ScheduleCalendarViewModel
         {
             Inicio = start,
             Fim = end,
+            ModoVisualizacao = viewMode,
+            TipoSelecionado = tipoFiltro,
+            ResponsavelSelecionado = responsavelFiltro,
+            SetorSelecionado = setorFiltro,
+            TiposDisponiveis = disponiveisTipos,
+            ResponsaveisDisponiveis = disponiveisResponsaveis,
+            SetoresDisponiveis = disponiveisSetores,
             Compromissos = compromissosModel
         };
 
         return View(model);
+    }
+
+    private static DateTime? NormalizeDate(DateTime? value)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        var input = value.Value;
+        return input.Kind switch
+        {
+            DateTimeKind.Utc => input,
+            DateTimeKind.Local => input.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(input, DateTimeKind.Utc)
+        };
+    }
+
+    private static string NormalizeViewMode(string? modo)
+    {
+        if (string.IsNullOrWhiteSpace(modo))
+        {
+            return AgendaViewMode.Semana;
+        }
+
+        var normalized = modo.Trim().ToLowerInvariant();
+        return AgendaViewMode.IsValid(normalized)
+            ? normalized
+            : AgendaViewMode.Semana;
+    }
+
+    private static string? NormalizeFilter(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static DateTime EnsureUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
     }
 
     private static IReadOnlyCollection<ScheduleEntryViewModel> MapWithConflicts(IReadOnlyCollection<ScheduleEntry> compromissos)
