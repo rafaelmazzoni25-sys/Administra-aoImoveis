@@ -18,6 +18,18 @@
                 <a class="hover:underline" asp-controller="Atividades" asp-action="Index">Pendências</a>
                 <a class="hover:underline" asp-controller="Agenda" asp-action="Index">Agenda</a>
                 <a class="hover:underline" asp-controller="Relatorios" asp-action="Indicadores">Relatórios</a>
+                @if (User?.Identity?.IsAuthenticated ?? false)
+                {
+                    if (User.IsInRole("PROPRIETARIO"))
+                    {
+                        <a class="hover:underline" asp-area="PortalProprietario" asp-controller="Home" asp-action="Index">Portal Proprietário</a>
+                    }
+
+                    if (User.IsInRole("INTERESSADO"))
+                    {
+                        <a class="hover:underline" asp-area="PortalInteressado" asp-controller="Home" asp-action="Index">Portal Interessado</a>
+                    }
+                }
             </nav>
         </div>
     </header>
