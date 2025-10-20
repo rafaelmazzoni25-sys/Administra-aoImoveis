@@ -1,0 +1,35 @@
+@model IndicatorsViewModel
+@{
+    ViewData["Title"] = "Indicadores";
+}
+<section class="space-y-4">
+    <header class="flex justify-between items-center">
+        <div>
+            <h2 class="text-2xl font-semibold text-slate-800">Indicadores Operacionais</h2>
+            <p class="text-sm text-slate-500">Período: @Model.PeriodoInicio:dd/MM/yyyy - @Model.PeriodoFim:dd/MM/yyyy</p>
+        </div>
+        <div class="space-x-2">
+            <a class="btn-secondary" asp-action="ExportarCsv" asp-route-inicio="@Model.PeriodoInicio.ToString("s")" asp-route-fim="@Model.PeriodoFim.ToString("s")">Exportar CSV</a>
+            <a class="btn-secondary" asp-action="ExportarHtml" asp-route-inicio="@Model.PeriodoInicio.ToString("s")" asp-route-fim="@Model.PeriodoFim.ToString("s")">Versão imprimível</a>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="card">
+            <div class="card-title">Vacância</div>
+            <div class="card-value">@Model.VacanciaPercentual.ToString("N2")%</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Tempo médio de negociação</div>
+            <div class="card-value">@Model.TempoMedioNegociacaoDias.ToString("N1") dias</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Tempo médio de vistoria</div>
+            <div class="card-value">@Model.TempoMedioVistoriaDias.ToString("N1") dias</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Custos de manutenção</div>
+            <div class="card-value">@Model.CustoManutencaoPeriodo.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</div>
+        </div>
+    </div>
+</section>

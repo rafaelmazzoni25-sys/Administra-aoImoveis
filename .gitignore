@@ -1,0 +1,19 @@
+# Build artifacts
+bin/
+obj/
+
+# User-specific files
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ASP.NET logs
+logs/
+
+# Node modules
+node_modules/
+
+# Tailwind build cache
+src/AdministraAoImoveis.Web/wwwroot/css/site.css.map

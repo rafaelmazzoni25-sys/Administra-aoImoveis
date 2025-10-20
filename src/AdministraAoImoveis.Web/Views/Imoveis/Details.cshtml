@@ -1,0 +1,112 @@
+@model PropertyDetailViewModel
+@{
+    ViewData["Title"] = "Detalhes do Imóvel";
+}
+<section class="space-y-8">
+    <header class="card">
+        <h2 class="card-title">@Model.CodigoInterno - @Model.Titulo</h2>
+        <p class="text-sm text-slate-500">@Model.Endereco - @Model.Bairro - @Model.Cidade/@Model.Estado</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm mt-4">
+            <div>Área: <strong>@Model.Area m²</strong></div>
+            <div>Quartos: <strong>@Model.Quartos</strong></div>
+            <div>Banheiros: <strong>@Model.Banheiros</strong></div>
+            <div>Vagas: <strong>@Model.Vagas</strong></div>
+        </div>
+        <p class="mt-4 text-xs uppercase tracking-wide text-slate-500">Status atual: <strong>@Model.StatusDisponibilidade</strong></p>
+        <p class="text-xs text-slate-500">Disponível a partir de: @(Model.DataPrevistaDisponibilidade?.ToString("dd/MM/yyyy") ?? "--")</p>
+    </header>
+
+    <section class="card">
+        <h3 class="card-title">Negociações ativas</h3>
+        @if (!Model.Negociacoes.Any())
+        {
+            <p class="empty-state">Nenhuma negociação cadastrada.</p>
+        }
+        else
+        {
+            <ul class="divide-y divide-slate-200">
+                @foreach (var negociacao in Model.Negociacoes)
+                {
+                    <li class="py-3">
+                        <div class="flex justify-between text-sm">
+                            <span>@negociacao.Interessado?.Nome</span>
+                            <span class="font-semibold">@negociacao.Etapa</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Criada em @negociacao.CreatedAt:dd/MM/yyyy</p>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section class="card">
+        <h3 class="card-title">Vistorias</h3>
+        @if (!Model.Vistorias.Any())
+        {
+            <p class="empty-state">Nenhuma vistoria registrada.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Agendada para</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var vistoria in Model.Vistorias)
+                    {
+                        <tr>
+                            <td>@vistoria.Tipo</td>
+                            <td>@vistoria.Status</td>
+                            <td>@vistoria.AgendadaPara:dd/MM/yyyy HH:mm</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="card">
+        <h3 class="card-title">Pendências e Tarefas</h3>
+        @if (!Model.Atividades.Any())
+        {
+            <p class="empty-state">Nenhuma pendência aberta.</p>
+        }
+        else
+        {
+            <ul class="divide-y divide-slate-200">
+                @foreach (var atividade in Model.Atividades)
+                {
+                    <li class="py-3 flex justify-between text-sm">
+                        <span>@atividade.Titulo</span>
+                        <span class="font-semibold">@atividade.Status</span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section class="card">
+        <h3 class="card-title">Histórico</h3>
+        @if (!Model.Historico.Any())
+        {
+            <p class="empty-state">Sem eventos registrados.</p>
+        }
+        else
+        {
+            <ol class="space-y-2">
+                @foreach (var evento in Model.Historico)
+                {
+                    <li>
+                        <div class="text-xs text-slate-500">@evento.OcorreuEm:dd/MM/yyyy HH:mm - @evento.Usuario</div>
+                        <div class="text-sm">@evento.Titulo</div>
+                        <div class="text-slate-600 text-xs">@evento.Descricao</div>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+</section>

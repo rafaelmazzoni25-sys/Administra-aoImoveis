@@ -1,0 +1,58 @@
+@model PropertyListViewModel
+@{
+    ViewData["Title"] = "Imóveis";
+}
+<section class="space-y-6">
+    <form method="get" class="bg-white p-4 rounded shadow grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+            <label class="label" for="status">Status</label>
+            <select class="input" id="status" name="status">
+                <option value="">Todos</option>
+                @foreach (var statusValue in Enum.GetValues<AdministraAoImoveis.Web.Domain.Enumerations.AvailabilityStatus>())
+                {
+                    <option value="@statusValue" selected="@(Model.Status == statusValue)">@statusValue</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="label" for="cidade">Cidade</label>
+            <input class="input" type="text" id="cidade" name="cidade" value="@Model.Cidade" />
+        </div>
+        <div>
+            <label class="label" for="bairro">Bairro</label>
+            <input class="input" type="text" id="bairro" name="bairro" value="@Model.Bairro" />
+        </div>
+        <div>
+            <label class="label" for="disponivelAte">Disponível até</label>
+            <input class="input" type="date" id="disponivelAte" name="disponivelAte" value="@(Model.DisponivelAte?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="md:col-span-4 flex justify-end">
+            <button type="submit" class="btn-primary">Filtrar</button>
+        </div>
+    </form>
+
+    <div class="grid grid-cols-1 gap-4">
+        @if (!Model.Resultados.Any())
+        {
+            <div class="empty-state">Nenhum imóvel encontrado com os filtros selecionados.</div>
+        }
+        else
+        {
+            foreach (var item in Model.Resultados)
+            {
+                <article class="card flex items-center justify-between">
+                    <div>
+                        <h3 class="card-title">@item.CodigoInterno - @item.Titulo</h3>
+                        <p class="text-sm text-slate-600">@item.Endereco</p>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Status: <strong>@item.Status</strong></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-slate-500">Disponível em</p>
+                        <p class="font-semibold">@(item.DataPrevistaDisponibilidade?.ToString("dd/MM/yyyy") ?? "--")</p>
+                        <a class="btn-link" asp-action="Details" asp-route-id="@item.Id">Detalhes</a>
+                    </div>
+                </article>
+            }
+        }
+    </div>
+</section>

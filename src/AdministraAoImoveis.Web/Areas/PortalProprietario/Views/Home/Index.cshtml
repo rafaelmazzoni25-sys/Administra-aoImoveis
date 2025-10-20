@@ -1,0 +1,83 @@
+@model OwnerPortalViewModel
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Portal do Proprietário";
+}
+<section class="space-y-6">
+    <header>
+        <h2 class="text-2xl font-semibold text-slate-800">Olá, @Model.Nome</h2>
+        <p class="text-sm text-slate-500">Acompanhe em tempo real o status de seus imóveis.</p>
+    </header>
+
+    <section class="card">
+        <h3 class="card-title">Imóveis</h3>
+        @if (!Model.Imoveis.Any())
+        {
+            <p class="empty-state">Nenhum imóvel vinculado a este usuário.</p>
+        }
+        else
+        {
+            <ul class="divide-y divide-slate-200">
+                @foreach (var imovel in Model.Imoveis)
+                {
+                    <li class="py-3 flex justify-between text-sm">
+                        <span>@imovel.CodigoInterno - @imovel.Titulo</span>
+                        <span class="font-semibold">@imovel.StatusDisponibilidade</span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section class="card">
+        <h3 class="card-title">Vistorias recentes</h3>
+        @if (!Model.Vistorias.Any())
+        {
+            <p class="empty-state">Nenhuma vistoria concluída ainda.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Imóvel</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var vistoria in Model.Vistorias.Take(10))
+                    {
+                        <tr>
+                            <td>@vistoria.Imovel?.CodigoInterno</td>
+                            <td>@vistoria.Tipo</td>
+                            <td>@vistoria.Status</td>
+                            <td>@vistoria.AgendadaPara:dd/MM/yyyy</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="card">
+        <h3 class="card-title">Manutenções</h3>
+        @if (!Model.Manutencoes.Any())
+        {
+            <p class="empty-state">Sem ordens de serviço.</p>
+        }
+        else
+        {
+            <ul class="divide-y divide-slate-200">
+                @foreach (var manutencao in Model.Manutencoes.Take(10))
+                {
+                    <li class="py-3 flex justify-between text-sm">
+                        <span>@manutencao.Titulo</span>
+                        <span class="font-semibold">@manutencao.Status</span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</section>
