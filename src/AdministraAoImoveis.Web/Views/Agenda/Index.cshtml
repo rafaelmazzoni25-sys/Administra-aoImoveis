@@ -24,25 +24,47 @@
                     <th>Responsável</th>
                     <th>Início</th>
                     <th>Fim</th>
+                    <th>Conflitos</th>
                 </tr>
             </thead>
             <tbody>
                 @if (!Model.Compromissos.Any())
                 {
                     <tr>
-                        <td colspan="5" class="py-6 text-center text-slate-500">Nenhum compromisso no período informado.</td>
+                        <td colspan="6" class="py-6 text-center text-slate-500">Nenhum compromisso no período informado.</td>
                     </tr>
                 }
                 else
                 {
                     foreach (var item in Model.Compromissos)
                     {
-                        <tr>
+                        var rowClass = item.TemConflito ? "bg-red-50" : string.Empty;
+                        <tr class="@rowClass">
                             <td>@item.Titulo</td>
                             <td>@item.Tipo</td>
                             <td>@item.Responsavel</td>
                             <td>@item.Inicio:dd/MM/yyyy HH:mm</td>
                             <td>@item.Fim:dd/MM/yyyy HH:mm</td>
+                            <td class="space-y-1">
+                                @if (item.TemConflito)
+                                {
+                                    foreach (var conflito in item.Conflitos)
+                                    {
+                                        <div class="flex flex-col text-sm">
+                                            <span class="font-medium text-red-700">@conflito.Escopo</span>
+                                            <span class="text-slate-600">@conflito.Titulo (@conflito.Inicio:dd/MM HH:mm - @conflito.Fim:dd/MM HH:mm)</span>
+                                            @if (!string.IsNullOrWhiteSpace(conflito.Responsavel))
+                                            {
+                                                <span class="text-slate-500">Responsável: @conflito.Responsavel</span>
+                                            }
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-slate-400">Sem conflitos</span>
+                                }
+                            </td>
                         </tr>
                     }
                 }
