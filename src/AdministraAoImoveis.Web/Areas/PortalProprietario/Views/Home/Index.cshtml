@@ -173,6 +173,8 @@
                                                 {
                                                     <span class="text-xs text-slate-500 block">Reserva válida até @negociacao.ReservadoAte.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
                                                 }
+                                                <span class="text-xs text-slate-500 block">Previsto: <strong>@negociacao.TotalPrevisto.ToString("C")</strong> · Recebido: <strong>@negociacao.TotalRecebido.ToString("C")</strong> · Pendente: <strong>@negociacao.TotalPendente.ToString("C")</strong></span>
+                                                <a class="btn-link" asp-area="" asp-controller="Financeiro" asp-action="Index" asp-route-negotiationId="@negociacao.Id">Gerenciar financeiro</a>
                                             </li>
                                         }
                                     </ul>

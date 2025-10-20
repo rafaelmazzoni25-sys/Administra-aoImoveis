@@ -66,6 +66,9 @@ public class OwnerPortalNegotiationSummary
     public DateTime? ReservadoAte { get; set; }
     public decimal? ValorSinal { get; set; }
     public string Interessado { get; set; } = string.Empty;
+    public decimal TotalPrevisto { get; set; }
+    public decimal TotalRecebido { get; set; }
+    public decimal TotalPendente { get; set; }
 }
 
 public class OwnerDocumentSummaryViewModel

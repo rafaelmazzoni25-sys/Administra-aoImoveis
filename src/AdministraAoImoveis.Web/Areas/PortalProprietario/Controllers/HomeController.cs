@@ -114,6 +114,9 @@ public class HomeController : Controller
                 .ThenInclude(i => i.Negociacoes)
                     .ThenInclude(n => n.Interessado)
             .Include(p => p.Imoveis)
+                .ThenInclude(i => i.Negociacoes)
+                    .ThenInclude(n => n.LancamentosFinanceiros)
+            .Include(p => p.Imoveis)
                 .ThenInclude(i => i.Atividades)
             .Include(p => p.Imoveis)
                 .ThenInclude(i => i.Documentos)
@@ -266,7 +269,10 @@ public class HomeController : Controller
                 CriadaEm = n.CreatedAt,
                 ReservadoAte = n.ReservadoAte,
                 ValorSinal = n.ValorSinal,
-                Interessado = n.Interessado?.Nome ?? string.Empty
+                Interessado = n.Interessado?.Nome ?? string.Empty,
+                TotalPrevisto = n.LancamentosFinanceiros.Sum(l => l.Valor),
+                TotalRecebido = n.LancamentosFinanceiros.Where(l => l.Status == FinancialStatus.Recebido).Sum(l => l.Valor),
+                TotalPendente = n.LancamentosFinanceiros.Where(l => l.Status == FinancialStatus.Pendente).Sum(l => l.Valor)
             })
             .ToList();
 
