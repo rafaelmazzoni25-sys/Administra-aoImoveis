@@ -1,0 +1,372 @@
+Ferramenta Integrada de Gestão Imobiliária
+Sistema completo para controle de imóveis, negociações, vistorias, pendências e tarefas
+🎯 Objetivo
+
+Criar uma plataforma única para que todos os setores da imobiliária possam acompanhar, em tempo real:
+
+Quais imóveis estão disponíveis, em negociação, em vistoria ou em manutenção;
+
+Quais imóveis ficarão disponíveis e quando;
+
+O andamento das negociações e etapas comerciais;
+
+O status de vistorias, pendências e tarefas internas;
+
+Tudo com alertas, histórico e integração entre setores.
+
+🧱 Estrutura Central do Sistema
+1. Cadastro e Consulta de Imóveis
+
+Descrição:
+Cada imóvel é um registro completo, centralizando todas as informações relevantes:
+
+Dados: endereço, tipo, tamanho, quartos, proprietário, status atual.
+
+Histórico de ocupações, manutenções e negociações.
+
+Documentos anexados (fotos, contratos, laudos, autorizações).
+
+Controle de disponibilidade e data prevista para liberação.
+
+Benefício:
+Permite que qualquer setor veja imediatamente o estado real do imóvel e seu histórico completo, sem depender de planilhas ou troca de mensagens.
+
+2. Gestão de Disponibilidade
+
+Descrição:
+Cada imóvel tem um status operacional claro:
+
+DISPONIVEL
+
+RESERVADO
+
+EM_NEGOCIACAO
+
+OCUPADO
+
+EM_VISTORIA_ENTRADA
+
+EM_VISTORIA_SAIDA
+
+EM_MANUTENCAO
+
+INDISPONIVEL
+
+AGENDADO_PARA_DISPONIBILIZACAO
+
+Regras automáticas:
+
+Imóvel só pode estar em uma negociação ativa por vez.
+
+Quando há aviso de desocupação, o sistema cria automaticamente vistoria de saída e muda o status.
+
+Após vistoria e manutenção, imóvel retorna a disponível.
+
+Se há pendência aberta, o sistema bloqueia a disponibilidade.
+
+Benefício:
+Evita conflito entre setores e dá visibilidade instantânea sobre o que está, ou estará, disponível para locação.
+
+3. Pipeline de Negociações (Kanban)
+
+Descrição:
+O módulo comercial funciona com um funil visual (kanban), representando as etapas da locação:
+
+LEAD_CAPTADO → VISITA_AGENDADA → PROPOSTA_ENVIADA →
+DOCUMENTACAO_EM_ANALISE → APROVACAO_CREDITO → CONTRATO_EMITIDO →
+ASSINATURA → ENTREGA_DE_CHAVES
+
+Cada negociação é vinculada a um imóvel, cliente interessado e corretor responsável.
+
+Funções adicionais:
+
+Registro de sinal e bloqueio temporário do imóvel.
+
+Controle de validade de proposta.
+
+Histórico completo de movimentação (quem mudou etapa e quando).
+
+Envio de alertas automáticos quando uma proposta expira ou avança.
+
+Benefício:
+Permite acompanhar o progresso de cada negócio, entender gargalos e medir eficiência da equipe comercial.
+
+4. Gestão de Vistorias
+
+Descrição:
+Controle total do fluxo de vistorias e seus relatórios:
+
+Tipos: ENTRADA, SAIDA, ROTINA, RETORNO_MANUTENCAO.
+
+Status: AGENDADA, EM_ANDAMENTO, RELATORIO_PENDENTE, APROVACAO, CONCLUIDA.
+
+Checklist configurável por tipo de imóvel.
+
+Integração direta com as pendências geradas durante a vistoria.
+
+Gatilhos automáticos:
+
+Aviso de saída gera vistoria automática.
+
+Vistoria concluída com pendências cria tarefas na manutenção.
+
+Benefício:
+Elimina falhas de comunicação entre vistoria e administração e garante que nenhum imóvel seja disponibilizado sem conformidade.
+
+5. Pendências e Tarefas
+
+Descrição:
+Módulo central de controle operacional para tarefas e pendências.
+
+Campos principais:
+
+Tipo (PENDENCIA ou TAREFA)
+
+Título e descrição detalhada
+
+Setor responsável
+
+Responsável direto
+
+Prioridade (BAIXA, MEDIA, ALTA, CRITICA)
+
+SLA (prazo de conclusão)
+
+Status (ABERTA, EM_PROGRESSO, BLOQUEADA, CONCLUIDA, CANCELADA)
+
+Recursos adicionais:
+
+Anexos, comentários e histórico de atualizações.
+
+Alertas automáticos de vencimento de SLA.
+
+Escalonamento de tarefas atrasadas para o gestor do setor.
+
+Benefício:
+Centraliza o controle de atividades, reduz esquecimentos e melhora a execução entre equipes.
+
+6. Módulo de Agenda Integrada
+
+Descrição:
+Uma agenda central para sincronizar vistorias, visitas e tarefas.
+
+Funcionalidades:
+
+Exibição em calendário semanal ou mensal.
+
+Filtros por setor ou responsável.
+
+Bloqueio automático de conflito (evita duas atividades no mesmo imóvel).
+
+Integração com Google Calendar e Outlook, sincronizando automaticamente.
+
+Benefício:
+Elimina sobreposição de horários e organiza o dia a dia de todos os setores.
+
+7. Módulo de Comunicação Interna
+
+Descrição:
+Canal de comunicação integrado, substituindo grupos de WhatsApp e mensagens dispersas.
+
+Funcionalidades:
+
+Chat interno vinculado ao imóvel, vistoria, negociação ou pendência.
+
+Menções (@usuario) para alertar pessoas específicas.
+
+Histórico registrado e auditável.
+
+Notificações instantâneas no sistema e por e-mail.
+
+Benefício:
+Facilita colaboração entre setores e cria rastreabilidade das conversas.
+
+8. Módulo de Documentos e Assinatura Digital
+
+Descrição:
+Centraliza todos os documentos da operação, automatizando contratos e relatórios.
+
+Funcionalidades:
+
+Modelos automáticos de contrato, laudos e autorizações.
+
+Preenchimento automático com dados do imóvel e partes envolvidas.
+
+Integração com sistemas de assinatura eletrônica (Clicksign, DocuSign).
+
+Controle de validade e aviso de renovação.
+
+Histórico de versões e logs de alteração.
+
+Benefício:
+Elimina papel físico e acelera o processo de fechamento com segurança jurídica.
+
+9. Módulo de Controle Financeiro
+
+Descrição:
+Permite acompanhar a parte financeira associada a imóveis e negociações.
+
+Funcionalidades:
+
+Registro de sinal e caução dentro da negociação.
+
+Acompanhamento de pagamentos (pendente, recebido, devolvido).
+
+Painel financeiro resumido por imóvel (aluguel, encargos, taxas).
+
+Bloqueio automático de reservas se houver pendências financeiras.
+
+Exportação para contabilidade (CSV/Excel ou integração via API).
+
+Benefício:
+Evita liberação de imóveis com pendências financeiras e simplifica o controle de repasses.
+
+10. Módulo de Gestão de Manutenções
+
+Descrição:
+Gerencia todo o ciclo de manutenção corretiva e preventiva.
+
+Funcionalidades:
+
+Registro de ordens de serviço (OS) vinculadas a imóveis, vistorias ou pendências.
+
+Acompanhamento por etapas: solicitada → aprovada → em execução → concluída.
+
+Associação de fornecedores e orçamentos.
+
+Check final obrigatório (com fotos) antes de liberar o imóvel.
+
+Relatórios de custos de manutenção por período e imóvel.
+
+Benefício:
+Padroniza o processo, reduz desperdícios e garante controle sobre qualidade e custo das manutenções.
+
+11. Módulo de Indicadores e Relatórios Avançados
+
+Descrição:
+Painel gerencial com métricas e relatórios automáticos.
+
+Indicadores principais:
+
+Taxa de vacância e tempo médio de locação.
+
+Tempo médio de vistoria e manutenção.
+
+Taxa de conversão de propostas.
+
+Desempenho de cada corretor/setor.
+
+Custo de manutenção por imóvel.
+
+Funcionalidades adicionais:
+
+Relatórios comparativos mensais e anuais.
+
+Exportação em PDF, Excel e CSV.
+
+Integração com Power BI ou Metabase para dashboards avançados.
+
+Benefício:
+Oferece visão estratégica clara e permite decisões baseadas em dados reais.
+
+12. Portal do Proprietário
+
+Descrição:
+Área exclusiva para o proprietário acompanhar o status do seu imóvel.
+
+Funcionalidades:
+
+Visualização do status atual (ocupado, disponível, manutenção, negociação).
+
+Histórico de vistorias, rendimentos e manutenções.
+
+Download de relatórios e documentos.
+
+Envio de mensagens e upload de autorizações.
+
+Benefício:
+Aumenta a transparência e reduz a necessidade de contato manual com o escritório.
+
+13. Portal do Interessado (Locatário)
+
+Descrição:
+Portal temporário onde o cliente interessado acompanha sua negociação.
+
+Funcionalidades:
+
+Linha do tempo da negociação (proposta, documentos, contrato, entrega de chaves).
+
+Upload de documentos diretamente no sistema.
+
+Agendamento de visita com confirmação automática.
+
+Atualizações automáticas de status.
+
+Benefício:
+Melhora a experiência do cliente e reduz o trabalho manual do setor comercial.
+
+14. Módulo de Controle de Prioridades
+
+Descrição:
+Painel que organiza tarefas e pendências conforme urgência e impacto.
+
+Funcionalidades:
+
+Classificação automática em matriz (alta/baixa urgência x impacto).
+
+Cores por prioridade (vermelho, amarelo, verde).
+
+Redistribuição de tarefas para evitar sobrecarga de usuários.
+
+Benefício:
+Garante foco no que é mais crítico e melhora a eficiência dos times operacionais.
+
+15. Módulo de Logs e Auditoria
+
+Descrição:
+Rastreamento completo de tudo que é feito no sistema.
+
+Funcionalidades:
+
+Registro de quem alterou, o que alterou e quando.
+
+Histórico de IP e dispositivo.
+
+Filtros por tipo de ação (criação, edição, exclusão).
+
+Exportação de logs por período.
+
+Benefício:
+Oferece transparência total e proteção jurídica para a imobiliária.
+
+16. Relacionamento com Leads e CRM Leve
+
+Descrição:
+Pequeno módulo CRM integrado à operação, para controle de captação e atendimento.
+
+Funcionalidades:
+
+Captura automática de leads do site, WhatsApp ou portais de anúncio.
+
+Classificação automática (quente, morno, frio).
+
+Histórico de contatos e propostas.
+
+Envio automático de imóveis compatíveis por e-mail.
+
+Integração com portais (Zap, OLX, Viva Real, etc.).
+
+Benefício:
+Centraliza atendimento e evita perda de oportunidades de locação.
+
+🔐 Segurança e Controle de Acesso
+
+Acesso por perfis (Admin, Comercial, Vistoria, Manutenção, Financeiro, Jurídico).
+
+Autenticação JWT e logs de atividade.
+
+Controle de permissão por ação (ler, editar, excluir).
+
+Backups automáticos e política de retenção.
+
+Armazenamento seguro de arquivos e antivírus em uploads.
