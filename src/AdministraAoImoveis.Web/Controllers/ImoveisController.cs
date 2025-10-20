@@ -1,4 +1,5 @@
 using AdministraAoImoveis.Web.Data;
+using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
 using AdministraAoImoveis.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -79,12 +80,39 @@ public class ImoveisController : Controller
             .Include(p => p.Vistorias)
             .Include(p => p.Atividades)
             .Include(p => p.Historico)
+            .Include(p => p.Documentos)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
         if (property is null)
         {
             return NotFound();
         }
+
+        await AtualizarDocumentosExpiradosAsync(property, cancellationToken);
+
+        var agora = DateTime.UtcNow;
+        var documentosResumo = property.Documentos
+            .GroupBy(d => d.Descricao)
+            .Select(grupo =>
+            {
+                var atual = grupo.OrderByDescending(d => d.Versao).First();
+                var expirado = atual.ValidoAte.HasValue && atual.ValidoAte.Value < agora;
+                var status = expirado && atual.Status == DocumentStatus.Aprovado
+                    ? DocumentStatus.Expirado
+                    : atual.Status;
+
+                return new PropertyDocumentSummaryViewModel
+                {
+                    Descricao = atual.Descricao,
+                    Status = status,
+                    Versao = atual.Versao,
+                    CreatedAt = atual.CreatedAt,
+                    ValidoAte = atual.ValidoAte,
+                    Expirado = expirado
+                };
+            })
+            .OrderBy(d => d.Descricao)
+            .ToList();
 
         var model = new PropertyDetailViewModel
         {
@@ -109,9 +137,33 @@ public class ImoveisController : Controller
             Atividades = property.Atividades.ToList(),
             Historico = property.Historico
                 .OrderByDescending(h => h.OcorreuEm)
-                .ToList()
+                .ToList(),
+            Documentos = documentosResumo
         };
 
         return View(model);
+    }
+
+    private async Task AtualizarDocumentosExpiradosAsync(Property property, CancellationToken cancellationToken)
+    {
+        var agora = DateTime.UtcNow;
+        var usuario = User?.Identity?.Name ?? "Sistema";
+        var alterado = false;
+
+        foreach (var documento in property.Documentos)
+        {
+            if (documento.Status == DocumentStatus.Aprovado && documento.ValidoAte.HasValue && documento.ValidoAte.Value < agora)
+            {
+                documento.Status = DocumentStatus.Expirado;
+                documento.UpdatedAt = agora;
+                documento.UpdatedBy = usuario;
+                alterado = true;
+            }
+        }
+
+        if (alterado)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
     }
 }

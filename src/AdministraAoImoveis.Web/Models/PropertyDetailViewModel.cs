@@ -25,4 +25,5 @@ public class PropertyDetailViewModel
     public IReadOnlyCollection<Inspection> Vistorias { get; set; } = Array.Empty<Inspection>();
     public IReadOnlyCollection<Activity> Atividades { get; set; } = Array.Empty<Activity>();
     public IReadOnlyCollection<PropertyHistoryEvent> Historico { get; set; } = Array.Empty<PropertyHistoryEvent>();
+    public IReadOnlyCollection<PropertyDocumentSummaryViewModel> Documentos { get; set; } = Array.Empty<PropertyDocumentSummaryViewModel>();
 }
