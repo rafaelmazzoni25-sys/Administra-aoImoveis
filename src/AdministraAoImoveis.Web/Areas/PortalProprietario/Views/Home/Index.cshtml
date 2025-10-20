@@ -3,81 +3,245 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "Portal do Proprietário";
 }
+
 <section class="space-y-6">
-    <header>
+    <header class="space-y-1">
         <h2 class="text-2xl font-semibold text-slate-800">Olá, @Model.Nome</h2>
-        <p class="text-sm text-slate-500">Acompanhe em tempo real o status de seus imóveis.</p>
+        <p class="text-sm text-slate-500">Acompanhe o status dos seus imóveis, documentos e mensagens diretamente pelo portal.</p>
     </header>
 
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <article class="card bg-slate-900 text-white">
+            <p class="text-xs uppercase tracking-wide text-slate-200">Total de imóveis</p>
+            <p class="text-3xl font-semibold">@Model.Metricas.TotalImoveis</p>
+        </article>
+        <article class="card">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Disponíveis</p>
+            <p class="text-2xl font-semibold">@Model.Metricas.Disponiveis</p>
+        </article>
+        <article class="card">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Em negociação/reserva</p>
+            <p class="text-2xl font-semibold">@Model.Metricas.EmNegociacao</p>
+        </article>
+        <article class="card">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Em manutenção</p>
+            <p class="text-2xl font-semibold">@Model.Metricas.EmManutencao</p>
+        </article>
+        <article class="card">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Vistorias pendentes</p>
+            <p class="text-2xl font-semibold">@Model.Metricas.VistoriasPendentes</p>
+        </article>
+        <article class="card">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Manutenções abertas</p>
+            <p class="text-2xl font-semibold">@Model.Metricas.ManutencoesAbertas</p>
+        </article>
+        <article class="card border-l-4 border-red-500">
+            <p class="text-xs uppercase tracking-wide text-red-600">Pendências críticas</p>
+            <p class="text-2xl font-semibold">@Model.Metricas.PendenciasCriticas</p>
+        </article>
+        <article class="card border-l-4 border-amber-400">
+            <p class="text-xs uppercase tracking-wide text-amber-600">Documentos aguardando aceite</p>
+            <p class="text-2xl font-semibold">@Model.Metricas.DocumentosPendentes</p>
+        </article>
+    </section>
+
     <section class="card">
-        <h3 class="card-title">Imóveis</h3>
+        <h3 class="card-title">Documentos que precisam de atenção</h3>
+        @if (!Model.DocumentosPendentes.Any())
+        {
+            <p class="empty-state">Nenhum documento pendente de aceite ou expirado.</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Imóvel</th>
+                            <th>Documento</th>
+                            <th>Versão</th>
+                            <th>Status</th>
+                            <th>Validade</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var doc in Model.DocumentosPendentes)
+                        {
+                            <tr>
+                                <td>@doc.Imovel</td>
+                                <td>@doc.Descricao</td>
+                                <td>v@doc.Versao</td>
+                                <td>@doc.Status</td>
+                                <td>@(doc.ValidoAte?.ToLocalTime().ToString("dd/MM/yyyy") ?? "-")</td>
+                                <td class="text-right">
+                                    <a class="btn-secondary" asp-area="" asp-controller="Documentos" asp-action="Download" asp-route-propertyId="@doc.ImovelId" asp-route-documentId="@doc.DocumentoId">Baixar</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="space-y-4">
+        <h3 class="text-xl font-semibold text-slate-800">Imóveis e agendas</h3>
         @if (!Model.Imoveis.Any())
         {
-            <p class="empty-state">Nenhum imóvel vinculado a este usuário.</p>
+            <p class="empty-state">Nenhum imóvel foi vinculado a este usuário. Entre em contato com a administração.</p>
         }
         else
         {
-            <ul class="divide-y divide-slate-200">
+            <div class="space-y-4">
                 @foreach (var imovel in Model.Imoveis)
                 {
-                    <li class="py-3 flex justify-between text-sm">
-                        <span>@imovel.CodigoInterno - @imovel.Titulo</span>
-                        <span class="font-semibold">@imovel.StatusDisponibilidade</span>
-                    </li>
+                    <article class="card space-y-3">
+                        <header class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                            <div>
+                                <h4 class="card-title">@imovel.CodigoInterno - @imovel.Titulo</h4>
+                                <p class="text-sm text-slate-500">@imovel.Endereco</p>
+                            </div>
+                            <div class="text-right text-sm space-y-1">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs">@imovel.Status</span>
+                                @if (imovel.DisponivelEm.HasValue)
+                                {
+                                    <div>Disponível a partir de <span class="font-semibold">@imovel.DisponivelEm.Value.ToLocalTime().ToString("dd/MM/yyyy")</span></div>
+                                }
+                                <div>Pendências críticas: <span class="font-semibold">@imovel.PendenciasCriticas</span></div>
+                            </div>
+                        </header>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                            <section class="bg-slate-50 rounded p-3 space-y-2">
+                                <h5 class="font-semibold text-slate-700">Próximas vistorias</h5>
+                                @if (!imovel.ProximasVistorias.Any())
+                                {
+                                    <p class="text-xs text-slate-500">Nenhuma vistoria pendente.</p>
+                                }
+                                else
+                                {
+                                    <ul class="space-y-1">
+                                        @foreach (var vistoria in imovel.ProximasVistorias)
+                                        {
+                                            <li>
+                                                <span class="font-medium">@vistoria.Tipo</span> · @vistoria.AgendadaPara.ToLocalTime().ToString("dd/MM/yyyy HH:mm")<br />
+                                                <span class="text-xs text-slate-500">@vistoria.Status · @vistoria.Responsavel</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </section>
+                            <section class="bg-slate-50 rounded p-3 space-y-2">
+                                <h5 class="font-semibold text-slate-700">Manutenções em aberto</h5>
+                                @if (!imovel.ManutencoesEmAberto.Any())
+                                {
+                                    <p class="text-xs text-slate-500">Sem ordens de serviço pendentes.</p>
+                                }
+                                else
+                                {
+                                    <ul class="space-y-1">
+                                        @foreach (var manutencao in imovel.ManutencoesEmAberto)
+                                        {
+                                            @{
+                                                var previsao = manutencao.PrevisaoConclusao.HasValue
+                                                    ? manutencao.PrevisaoConclusao.Value.ToLocalTime().ToString("dd/MM/yyyy")
+                                                    : "sem data definida";
+                                            }
+                                            <li>
+                                                <span class="font-medium">@manutencao.Titulo</span> · @manutencao.Status<br />
+                                                <span class="text-xs text-slate-500">Responsável: @manutencao.Responsavel | Previsto para @previsao</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </section>
+                            <section class="bg-slate-50 rounded p-3 space-y-2">
+                                <h5 class="font-semibold text-slate-700">Negociações em andamento</h5>
+                                @if (!imovel.NegociacoesAtivas.Any())
+                                {
+                                    <p class="text-xs text-slate-500">Nenhuma negociação ativa.</p>
+                                }
+                                else
+                                {
+                                    <ul class="space-y-1">
+                                        @foreach (var negociacao in imovel.NegociacoesAtivas)
+                                        {
+                                            <li>
+                                                <span class="font-medium">@negociacao.Interessado</span> · @negociacao.Etapa<br />
+                                                <span class="text-xs text-slate-500">Criada em @negociacao.CriadaEm.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                                @if (negociacao.ReservadoAte.HasValue)
+                                                {
+                                                    <span class="text-xs text-slate-500 block">Reserva válida até @negociacao.ReservadoAte.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </section>
+                        </div>
+                    </article>
                 }
-            </ul>
+            </div>
         }
     </section>
 
-    <section class="card">
-        <h3 class="card-title">Vistorias recentes</h3>
-        @if (!Model.Vistorias.Any())
-        {
-            <p class="empty-state">Nenhuma vistoria concluída ainda.</p>
-        }
-        else
-        {
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Imóvel</th>
-                        <th>Tipo</th>
-                        <th>Status</th>
-                        <th>Data</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var vistoria in Model.Vistorias.Take(10))
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <article class="card md:col-span-2">
+            <h3 class="card-title">Mensagens recentes</h3>
+            @if (!Model.MensagensRecentes.Any())
+            {
+                <p class="empty-state">Nenhuma mensagem registrada até o momento.</p>
+            }
+            else
+            {
+                <ul class="space-y-3">
+                    @foreach (var mensagem in Model.MensagensRecentes)
                     {
-                        <tr>
-                            <td>@vistoria.Imovel?.CodigoInterno</td>
-                            <td>@vistoria.Tipo</td>
-                            <td>@vistoria.Status</td>
-                            <td>@vistoria.AgendadaPara:dd/MM/yyyy</td>
-                        </tr>
+                        <li class="border border-slate-200 rounded p-3">
+                            <div class="flex justify-between text-sm">
+                                <span class="font-semibold">@mensagem.Contexto</span>
+                                <span class="text-slate-500">@mensagem.EnviadaEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mb-1">@mensagem.Autor</p>
+                            <p class="text-sm text-slate-700 whitespace-pre-line">@mensagem.Conteudo</p>
+                        </li>
                     }
-                </tbody>
-            </table>
-        }
-    </section>
-
-    <section class="card">
-        <h3 class="card-title">Manutenções</h3>
-        @if (!Model.Manutencoes.Any())
-        {
-            <p class="empty-state">Sem ordens de serviço.</p>
-        }
-        else
-        {
-            <ul class="divide-y divide-slate-200">
-                @foreach (var manutencao in Model.Manutencoes.Take(10))
-                {
-                    <li class="py-3 flex justify-between text-sm">
-                        <span>@manutencao.Titulo</span>
-                        <span class="font-semibold">@manutencao.Status</span>
-                    </li>
-                }
-            </ul>
-        }
+                </ul>
+            }
+        </article>
+        <article class="card">
+            <h3 class="card-title">Enviar mensagem</h3>
+            @if (!Model.PodeEnviarMensagem)
+            {
+                <p class="empty-state">Nenhum imóvel disponível para envio de mensagens.</p>
+            }
+            else
+            {
+                <form asp-action="PostMensagem" method="post" class="space-y-3">
+                    @Html.AntiForgeryToken()
+                    <div>
+                        <label class="label" asp-for="NovaMensagem.ImovelId">Imóvel</label>
+                        <select class="input" asp-for="NovaMensagem.ImovelId">
+                            <option value="">Selecione...</option>
+                            @foreach (var imovel in Model.Imoveis)
+                            {
+                                <option value="@imovel.Id" selected="@(Model.NovaMensagem.ImovelId == imovel.Id ? "selected" : null)">@imovel.CodigoInterno - @imovel.Titulo</option>
+                            }
+                        </select>
+                        <span class="text-xs text-red-600" asp-validation-for="NovaMensagem.ImovelId"></span>
+                    </div>
+                    <div>
+                        <label class="label" asp-for="NovaMensagem.Mensagem">Mensagem</label>
+                        <textarea class="input" rows="4" asp-for="NovaMensagem.Mensagem"></textarea>
+                        <span class="text-xs text-red-600" asp-validation-for="NovaMensagem.Mensagem"></span>
+                    </div>
+                    <button class="btn-primary w-full" type="submit">Enviar mensagem</button>
+                </form>
+            }
+        </article>
     </section>
 </section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

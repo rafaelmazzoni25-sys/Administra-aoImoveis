@@ -6,5 +6,5 @@ public class ScheduleCalendarViewModel
 {
     public DateTime Inicio { get; set; }
     public DateTime Fim { get; set; }
-    public IReadOnlyCollection<ScheduleEntry> Compromissos { get; set; } = Array.Empty<ScheduleEntry>();
+    public IReadOnlyCollection<ScheduleEntryViewModel> Compromissos { get; set; } = Array.Empty<ScheduleEntryViewModel>();
 }
