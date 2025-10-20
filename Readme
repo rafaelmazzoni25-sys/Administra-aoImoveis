@@ -1,1 +1,344 @@
+Ferramenta Integrada de Gestão Imobiliária (Standalone, C#)
+Objetivo
 
+Plataforma única para todos os setores acompanharem, em tempo real e sem internet:
+
+Disponibilidade de imóveis (disponível, vai ficar disponível, em negociação, vistoria, manutenção, indisponível).
+
+Pipeline das negociações e suas etapas.
+
+Vistorias, pendências e tarefas com SLA e auditoria.
+
+Agenda interna (visitas, vistorias, tarefas).
+
+Documentos (armazenados localmente) e relatórios.
+
+Portais internos para Proprietário e Interessado (usuários cadastrados no próprio sistema, sem serviços externos).
+
+Arquitetura e Stack (100% local, sem terceiros)
+
+Linguagem/Runtime: C# / .NET 8 (LTS).
+
+Aplicação: ASP.NET Core (Kestrel), rodando on-premise em 1 máquina Windows (pode ser servidor/desktop). Acesso via navegador pelos usuários na rede local (LAN). Sem comunicação com internet.
+
+Persistência: SQL Server Express LocalDB (instalado na mesma máquina), banco único. Alternativa Windows-only e oficial Microsoft (sem terceiros).
+
+ORM: EF Core (Microsoft).
+
+UI: Razor Pages/Blazor Server ou MVC + TailwindCSS (bundled no projeto).
+
+Arquivos (anexos): armazenados em pasta local do servidor (ex.: D:\Imobiliaria\Arquivos).
+
+Geração de relatórios/exportação: CSV e HTML “imprimível” (o usuário pode usar a impressora “Microsoft Print to PDF” do Windows, sem bibliotecas externas).
+
+Autenticação/Autorização: ASP.NET Identity (local, usuários no próprio banco), RBAC por perfis.
+
+Logs/Auditoria: tabela própria no banco + arquivos .log rotativos em disco local.
+
+Observação: Todos os recursos operam sem WhatsApp, e-mail, DocuSign, Google/Outlook, portais de anúncio, Power BI, etc.
+
+Módulos do Sistema
+1) Cadastro e Consulta de Imóveis
+
+O que faz:
+Registro completo do imóvel com dados estruturados, anexos locais e histórico.
+
+Campos principais:
+Código interno, endereço, tipo, área, quartos/banheiros/vaga, características (JSON interno), proprietário, status de disponibilidade, data prevista de disponibilidade, vínculo a contrato ativo (se houver).
+
+Tela:
+
+Lista com filtros (status, bairro, cidade, previsão até data X).
+
+Detalhe com abas: Geral | Disponibilidade | Negociações | Vistorias | Pendências/Tarefas | Documentos | Histórico (timeline).
+
+Regra: Toda mudança relevante gera evento no histórico.
+
+2) Gestão de Disponibilidade
+
+Estados do imóvel (enum):
+DISPONIVEL, RESERVADO, EM_NEGOCIACAO, OCUPADO, EM_VISTORIA_ENTRADA, EM_VISTORIA_SAIDA, EM_MANUTENCAO, INDISPONIVEL, AGENDADO_PARA_DISPONIBILIZACAO.
+
+Regras-chave:
+
+Uma negociação “ativa” por imóvel (evita conflitos).
+
+Aviso de desocupação → cria vistoria de SAÍDA e muda status para EM_VISTORIA_SAIDA.
+
+Conclusão de vistoria + pendências zeradas → DISPONIVEL.
+
+Se houver pendência crítica aberta, bloqueia DISPONIVEL.
+
+Recebimento de sinal na negociação → imóvel RESERVADO por X horas (definível).
+
+Benefício: estados claros e bloqueios automáticos evitam falhas operacionais.
+
+3) Pipeline de Negociações (Kanban)
+
+Etapas (enum):
+LEAD_CAPTADO → VISITA_AGENDADA → PROPOSTA_ENVIADA → DOCUMENTACAO_EM_ANALISE → APROVACAO_CREDITO → CONTRATO_EMITIDO → ASSINATURA → ENTREGA_DE_CHAVES.
+
+Recursos:
+
+Quadro kanban (drag-and-drop) com validações de etapa.
+
+Registro de sinal (valor e validade), que reserva o imóvel localmente.
+
+Controle de documentos internos (upload local; sem assinatura digital externa — ver “Documentos”).
+
+Histórico completo de movimentação por usuário/data.
+
+Fechamento:
+Assinatura registrada internamente (verba “aceite interno”), gera contrato ATIVO e muda o imóvel para OCUPADO. Sem uso de provedores de e-signature.
+
+4) Vistorias
+
+Tipos: ENTRADA, SAIDA, ROTINA, RETORNO_MANUTENCAO.
+Status: AGENDADA, EM_ANDAMENTO, RELATORIO_PENDENTE, APROVACAO, CONCLUIDA.
+
+Fluxo:
+
+Agendamento pela Agenda Interna.
+
+Checklist configurável (JSON), com fotos e laudo salvos em disco local.
+
+Ao concluir, se houver pendências → cria Tarefas e mantém bloqueio de disponibilidade.
+
+Regra de bloqueio: imóvel não pode ir para DISPONIVEL enquanto existir vistoria com relatório pendente ou pendência crítica não resolvida.
+
+5) Pendências e Tarefas
+
+Entidade única “Atividade”.
+Campos: tipo (PENDENCIA/TAREFA), título, descrição, vínculo (IMOVEL/NEGOCIACAO/VISTORIA/CONTRATO), setor, responsável, prioridade (BAIXA/MEDIA/ALTA/CRITICA), SLA, status (ABERTA/EM_PROGRESSO/BLOQUEADA/CONCLUIDA/CANCELADA).
+
+Recursos:
+
+Comentários e anexos locais.
+
+Alertas in-app por prazo (badges/vermelho; sem e-mail/SMS).
+
+Escalonamento interno: atividades críticas atrasadas aparecem no painel do gestor do setor.
+
+6) Agenda Interna (sem integrações)
+
+O que faz:
+Calendário local para vistorias, visitas e tarefas, com bloqueios de conflito.
+
+Recursos:
+
+Visão semanal/mensal.
+
+Filtros por setor, responsável e tipo de compromisso.
+
+Bloqueio automático: não permite duas vistorias no mesmo imóvel no mesmo horário.
+
+Notificações in-app (cards/contadores) ao usuário responsável.
+
+7) Comunicação Interna
+
+O que faz:
+Comentários e chat interno por contexto (imóvel, negociação, vistoria, tarefa).
+
+Recursos:
+
+Menções @usuario (gera notificação in-app).
+
+Tudo fica no histórico auditável.
+
+Sem envio externo (sem e-mail, sem WhatsApp).
+
+8) Documentos (Interno, sem terceiros)
+
+O que faz:
+Armazena documentos localmente (contratos, laudos, fotos).
+
+Recursos:
+
+Modelos internos de contrato/laudo (placeholders substituídos por dados do sistema).
+
+Aceite interno: registro de quem gerou/validou/assinou presencialmente (nome, cargo, data/hora, IP e usuário do sistema).
+
+Exportação:
+
+HTML imprimível (com cabeçalho/rodapé).
+
+CSV (dados tabulares).
+
+Para PDF, usar a impressora “Microsoft Print to PDF” do Windows (sem bibliotecas externas).
+
+Versionamento básico: cada upload gera nova versão com histórico.
+
+9) Controle Financeiro (Local)
+
+O que faz:
+Acompanha sinal e caução vinculados à negociação, e resumo financeiro do imóvel.
+
+Recursos:
+
+Registro de status: pendente/recebido/devolvido.
+
+Painel por imóvel: valor de aluguel, encargos e taxas (dados inseridos manualmente).
+
+Bloqueio de reserva ou avanço no funil se houver pendência financeira sinalizada.
+
+Exportação CSV/HTML (para contabilidade, sem integração).
+
+10) Gestão de Manutenções
+
+O que faz:
+Ordens de Serviço (OS) internas do imóvel.
+
+Fluxo:
+Solicitada → Aprovada → Em execução → Concluída (com fotos e checagem).
+Vincula-se a vistoria/pendência quando aplicável.
+
+Relatórios:
+Custo de manutenção por período e por imóvel (dados manualmente ou por OS).
+
+11) Indicadores e Relatórios
+
+Indicadores:
+
+Vacância (% e tempo médio).
+
+Tempo de negociação por etapa.
+
+Tempo de vistoria/manutenção.
+
+Conversão por corretor/setor.
+
+Custos de manutenção por imóvel.
+
+Saída:
+
+Dashboard local (gráficos em HTML).
+
+Exportação CSV e HTML imprimível (sem Power BI/Metabase).
+
+12) Portais Internos (Proprietário e Interessado)
+
+Observação: São áreas dentro da mesma aplicação. Usuários (proprietário/interessado) são cadastrados localmente e acessam pela LAN (ou Wi-Fi da empresa). Nada é publicado na internet.
+
+Portal do Proprietário (interno):
+
+Vê status do(s) seu(s) imóvel(is): ocupado, disponível, manutenção, vistoria, negociação.
+
+Histórico de vistorias e manutenções.
+
+Download de relatórios (HTML/CSV).
+
+Mensagens internas com administração.
+
+Portal do Interessado (interno):
+
+Acompanha a timeline da negociação (proposta, documentos, contrato, entrega de chaves).
+
+Upload de documentos (em pasta local).
+
+Agendamento de visita via Agenda Interna (com validações).
+
+Atualizações in-app (sem e-mail).
+
+Se não desejar expor a clientes na rede local, estes portais podem ser desativados por configuração; o sistema segue 100% interno.
+
+13) Controle de Prioridades
+
+O que faz:
+Organiza atividades por urgência x impacto.
+
+Recursos:
+
+Matriz com cores (vermelho/amarelo/verde).
+
+Redistribuição manual rápida (drag-and-drop de responsável).
+
+Destaque de atrasos críticos nos dashboards (badges/vermelho).
+
+14) Logs e Auditoria
+
+O que registra:
+Toda operação relevante (criação, edição, exclusão, trocas de status, login, download de documento).
+
+Detalhes gravados:
+Entidade, ID, operação, antes/depois (JSON), usuário, timestamp, IP e host.
+
+Saída:
+Consulta por período e exportação CSV/HTML.
+
+Segurança e Acesso (Local)
+
+Perfis (RBAC): ADMIN, COMERCIAL, VISTORIA, MANUTENCAO, FINANCEIRO, JURIDICO, PROPRIETARIO, INTERESSADO.
+
+Permissões por ação (ler/criar/editar/excluir) por módulo.
+
+Políticas: troca de senha, bloqueio após tentativas, expiração de sessão.
+
+Backups: script local diário do banco + cópia de anexos para outra pasta/unidade.
+
+Sem tráfego externo; portas de rede apenas LAN.
+
+Modelo de Dados (PostgreSQL não; aqui SQL Server Express LocalDB)
+
+(Principais tabelas; nomes sugestivos)
+
+Imoveis, Proprietarios, Interessados, Negociacoes, NegociacaoEventos,
+Vistorias, Atividades, AtividadeComentarios, Contratos,
+Usuarios, Arquivos, NotificacoesInApp, AuditLog.
+
+Índices recomendados:
+
+Imoveis(StatusDisponibilidade, DataPrevistaDisponibilidade, Bairro, Cidade)
+
+Negociacoes(ImovelId, Etapa, Status)
+
+Atividades(VinculoTipo, VinculoId, Setor, Status, SLA)
+
+Vistorias(ImovelId, Status, AgendadaPara)
+
+AuditLog(Entidade, EntidadeId, CriadoEm)
+
+Enums (como int + dicionário):
+
+StatusDisponibilidade, EtapaNegociacao, StatusVistoria, PerfilUsuario, PrioridadeAtividade, StatusAtividade.
+
+Regras de Negócio Críticas
+
+Disponibilidade bloqueada se: vistoria pendente/reprovada ou pendência crítica não resolvida.
+
+Reserva por sinal: RESERVADO até ReservadoAte; se expirar sem avanço, reverte status e registra evento.
+
+Fechamento: ao concluir negociação → Contrato ATIVO + imóvel OCUPADO.
+
+Usuários externos (proprietário/interessado) acessam apenas seus dados; tudo fica local.
+
+Roadmap de Implementação (sem dependências externas)
+
+Fundação (2–3 semanas):
+Setup ASP.NET Core, EF Core, Identity, RBAC, CRUD de Imóveis/Usuários, Arquivos locais, AuditLog.
+
+Operação (3–4 semanas):
+Disponibilidade, Negociações (kanban), Atividades/SLA/alertas in-app, Agenda Interna (com bloqueios).
+
+Qualidade (2–3 semanas):
+Vistorias (checklist, laudos, fotos), Regras de bloqueio de disponibilidade, Manutenções (OS).
+
+Gestão (2 semanas):
+Relatórios/Indicadores (dashboards locais), Portais Internos (opcionais), Exportações CSV/HTML, melhorias de UX.
+
+Estimativas são meramente técnicas; você pode priorizar módulos conforme urgência do negócio.
+
+Critérios de Aceite (MVP Standalone)
+
+Listar rapidamente imóveis disponíveis e que ficarão disponíveis até [data].
+
+Ver etapa da negociação e histórico de eventos.
+
+Registrar vistorias com checklist e fotos, com bloqueios corretos de disponibilidade.
+
+Criar/acompanhar pendências com SLA e alertas in-app.
+
+Mudar status de imóvel com audit log visível.
+
+Agenda sem conflitos e sem integrações externas.
+
+Exportações CSV/HTML funcionais, sem bibliotecas de terceiros.
