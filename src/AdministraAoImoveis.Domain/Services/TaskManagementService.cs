@@ -1,3 +1,4 @@
+using System.Linq;
 using AdministraAoImoveis.Domain.Entities;
 using AdministraAoImoveis.Domain.Enums;
 using AdministraAoImoveis.Domain.Repositories;
@@ -41,6 +42,25 @@ public sealed class TaskManagementService
         }
 
         return overdue;
+    }
+
+    public async Task<IDictionary<PriorityQuadrant, IReadOnlyCollection<TaskItem>>> BuildPriorityMatrixAsync(CancellationToken cancellationToken = default)
+    {
+        var all = await _taskRepository.GetAllAsync(cancellationToken);
+        var result = new Dictionary<PriorityQuadrant, IReadOnlyCollection<TaskItem>>
+        {
+            [PriorityQuadrant.Critical] = Array.Empty<TaskItem>(),
+            [PriorityQuadrant.High] = Array.Empty<TaskItem>(),
+            [PriorityQuadrant.Standard] = Array.Empty<TaskItem>(),
+            [PriorityQuadrant.Opportunity] = Array.Empty<TaskItem>()
+        };
+
+        result[PriorityQuadrant.Critical] = all.Where(t => t.Priority == TaskPriority.Critica || t.IsOverdue(DateTime.UtcNow)).ToList();
+        result[PriorityQuadrant.High] = all.Where(t => t.Priority == TaskPriority.Alta && !t.IsOverdue(DateTime.UtcNow)).ToList();
+        result[PriorityQuadrant.Standard] = all.Where(t => t.Priority == TaskPriority.Media && !t.IsOverdue(DateTime.UtcNow)).ToList();
+        result[PriorityQuadrant.Opportunity] = all.Where(t => t.Priority == TaskPriority.Baixa && !t.IsOverdue(DateTime.UtcNow)).ToList();
+
+        return result;
     }
 
     private async Task<TaskItem> EnsureTaskAsync(Guid id, CancellationToken cancellationToken)

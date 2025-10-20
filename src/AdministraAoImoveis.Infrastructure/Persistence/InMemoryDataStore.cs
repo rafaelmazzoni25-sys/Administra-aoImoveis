@@ -12,4 +12,11 @@ internal sealed class InMemoryDataStore
     public ConcurrentDictionary<Guid, MaintenanceOrder> MaintenanceOrders { get; } = new();
     public ConcurrentDictionary<Guid, AgendaEvent> AgendaEvents { get; } = new();
     public ConcurrentDictionary<Guid, DocumentRecord> Documents { get; } = new();
+    public ConcurrentDictionary<Guid, DocumentWorkflow> DocumentWorkflows { get; } = new();
+    public ConcurrentDictionary<Guid, CommunicationThread> CommunicationThreads { get; } = new();
+    public ConcurrentDictionary<Guid, FinancialEntry> FinancialEntries { get; } = new();
+    public ConcurrentDictionary<Guid, Lead> Leads { get; } = new();
+    public ConcurrentDictionary<Guid, PortalAccount> PortalAccounts { get; } = new();
+    public ConcurrentDictionary<Guid, AuditLogEntry> AuditLogs { get; } = new();
+    public ConcurrentDictionary<Guid, NotificationMessage> Notifications { get; } = new();
 }

@@ -1,3 +1,4 @@
+using System.Linq;
 using AdministraAoImoveis.Application.Abstractions;
 using AdministraAoImoveis.Application.DTOs;
 using AdministraAoImoveis.Domain.Entities;
@@ -35,5 +36,11 @@ public sealed class TaskAppService
     {
         var tasks = await _taskRepository.GetOverdueAsync(DateTime.UtcNow, cancellationToken);
         return tasks.Select(t => t.ToDto()).ToList();
+    }
+
+    public async Task<IDictionary<PriorityQuadrant, IReadOnlyCollection<TaskDto>>> GetPriorityMatrixAsync(CancellationToken cancellationToken = default)
+    {
+        var matrix = await _taskManagementService.BuildPriorityMatrixAsync(cancellationToken);
+        return matrix.ToDictionary(pair => pair.Key, pair => (IReadOnlyCollection<TaskDto>)pair.Value.Select(t => t.ToDto()).ToList());
     }
 }

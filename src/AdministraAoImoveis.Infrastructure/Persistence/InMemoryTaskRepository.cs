@@ -1,3 +1,4 @@
+using System.Linq;
 using AdministraAoImoveis.Domain.Entities;
 using AdministraAoImoveis.Domain.Repositories;
 
@@ -30,6 +31,12 @@ public sealed class InMemoryTaskRepository : ITaskRepository
             .Where(t => t.IsOverdue(referenceDate))
             .ToList();
         return Task.FromResult<IReadOnlyList<TaskItem>>(result);
+    }
+
+    public Task<IReadOnlyCollection<TaskItem>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyCollection<TaskItem> result = _store.Tasks.Values.ToList();
+        return Task.FromResult(result);
     }
 
     public Task UpdateAsync(TaskItem task, CancellationToken cancellationToken = default)
