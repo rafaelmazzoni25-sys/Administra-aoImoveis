@@ -22,7 +22,7 @@ public class AgendaController : Controller
         var end = fim ?? start.AddDays(7);
 
         var compromissos = await _context.Agenda
-            .Where(a => a.Inicio >= start && a.Inicio <= end)
+            .Where(a => a.Inicio <= end && a.Fim >= start)
             .OrderBy(a => a.Inicio)
             .ToListAsync(cancellationToken);
 
