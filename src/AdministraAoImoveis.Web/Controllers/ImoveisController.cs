@@ -80,6 +80,7 @@ public class ImoveisController : Controller
             .Include(p => p.Vistorias)
             .Include(p => p.Atividades)
             .Include(p => p.Historico)
+            .Include(p => p.Manutencoes)
             .Include(p => p.Documentos)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
@@ -138,7 +139,19 @@ public class ImoveisController : Controller
             Historico = property.Historico
                 .OrderByDescending(h => h.OcorreuEm)
                 .ToList(),
-            Documentos = documentosResumo
+            Documentos = documentosResumo,
+            Manutencoes = property.Manutencoes
+                .OrderByDescending(m => m.CreatedAt)
+                .Select(m => new PropertyMaintenanceSummaryViewModel
+                {
+                    Id = m.Id,
+                    Titulo = m.Titulo,
+                    Status = m.Status,
+                    CriadoEm = m.CreatedAt,
+                    PrevisaoConclusao = m.PrevisaoConclusao,
+                    EmExecucao = m.Status == MaintenanceOrderStatus.EmExecucao
+                })
+                .ToList()
         };
 
         return View(model);

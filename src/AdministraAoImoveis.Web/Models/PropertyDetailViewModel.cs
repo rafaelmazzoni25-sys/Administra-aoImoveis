@@ -26,4 +26,15 @@ public class PropertyDetailViewModel
     public IReadOnlyCollection<Activity> Atividades { get; set; } = Array.Empty<Activity>();
     public IReadOnlyCollection<PropertyHistoryEvent> Historico { get; set; } = Array.Empty<PropertyHistoryEvent>();
     public IReadOnlyCollection<PropertyDocumentSummaryViewModel> Documentos { get; set; } = Array.Empty<PropertyDocumentSummaryViewModel>();
+    public IReadOnlyCollection<PropertyMaintenanceSummaryViewModel> Manutencoes { get; set; } = Array.Empty<PropertyMaintenanceSummaryViewModel>();
+}
+
+public class PropertyMaintenanceSummaryViewModel
+{
+    public Guid Id { get; set; }
+    public string Titulo { get; set; } = string.Empty;
+    public MaintenanceOrderStatus Status { get; set; }
+    public DateTime CriadoEm { get; set; }
+    public DateTime? PrevisaoConclusao { get; set; }
+    public bool EmExecucao { get; set; }
 }
