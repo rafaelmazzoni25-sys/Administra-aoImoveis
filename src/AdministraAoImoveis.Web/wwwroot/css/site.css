@@ -34,6 +34,10 @@ a:hover {
     display: flex;
 }
 
+.flex-col {
+    flex-direction: column;
+}
+
 .items-center {
     align-items: center;
 }
@@ -57,11 +61,18 @@ a:hover {
 .bg-sky-900 { background-color: #0c4a6e; }
 .bg-white { background-color: #ffffff; }
 .bg-slate-50 { background-color: #f8fafc; }
+.bg-emerald-100 { background-color: #d1fae5; }
+.bg-amber-100 { background-color: #fef3c7; }
+.bg-orange-100 { background-color: #ffedd5; }
 .text-white { color: #ffffff; }
 .text-slate-500 { color: #64748b; }
 .text-slate-600 { color: #475569; }
 .text-slate-800 { color: #1e293b; }
 .text-orange-600 { color: #ea580c; }
+.text-emerald-600 { color: #059669; }
+.text-emerald-700 { color: #047857; }
+.text-amber-600 { color: #d97706; }
+.text-amber-700 { color: #b45309; }
 .text-red-600 { color: #dc2626; }
 .uppercase { text-transform: uppercase; }
 .shadow { box-shadow: 0 10px 25px -15px rgba(15, 23, 42, 0.45); }
@@ -195,6 +206,14 @@ a:hover {
     font-size: 0.75rem;
     letter-spacing: 0.08em;
     color: #64748b;
+}
+
+.overflow-x-auto {
+    overflow-x: auto;
+}
+
+.align-top {
+    vertical-align: top;
 }
 
 .divide-y > :not([hidden]) ~ :not([hidden]) {
