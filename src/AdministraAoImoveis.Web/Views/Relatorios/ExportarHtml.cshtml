@@ -1,0 +1,49 @@
+@model IReadOnlyCollection<AdministraAoImoveis.Web.Domain.Entities.Inspection>
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Titulo"]</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 2rem; }
+        h1 { text-transform: uppercase; letter-spacing: .2rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+        th, td { border: 1px solid #cbd5f5; padding: .5rem; font-size: .85rem; }
+        th { background: #0f172a; color: #fff; text-align: left; }
+        tbody tr:nth-child(even) { background: #f1f5f9; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>@ViewData["Titulo"]</h1>
+        <p>Período: @ViewData["Periodo"]</p>
+        <p>Gerado em: @DateTime.UtcNow:dd/MM/yyyy HH:mm</p>
+    </header>
+    <table>
+        <thead>
+            <tr>
+                <th>Imóvel</th>
+                <th>Tipo</th>
+                <th>Status</th>
+                <th>Agendada para</th>
+                <th>Responsável</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vistoria in Model)
+            {
+                <tr>
+                    <td>@vistoria.Imovel?.CodigoInterno</td>
+                    <td>@vistoria.Tipo</td>
+                    <td>@vistoria.Status</td>
+                    <td>@vistoria.AgendadaPara:dd/MM/yyyy HH:mm</td>
+                    <td>@vistoria.Responsavel</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</body>
+</html>

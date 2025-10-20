@@ -1,0 +1,66 @@
+@model InspectionListViewModel
+@{
+    ViewData["Title"] = "Vistorias";
+}
+<section class="space-y-6">
+    <form method="get" class="bg-white p-4 rounded shadow grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+            <label class="label" for="status">Status</label>
+            <select class="input" id="status" name="status">
+                <option value="">Todos</option>
+                @foreach (var status in Enum.GetValues<AdministraAoImoveis.Web.Domain.Enumerations.InspectionStatus>())
+                {
+                    <option value="@status" selected="@(Model.Status == status)">@status</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="label" for="tipo">Tipo</label>
+            <select class="input" id="tipo" name="tipo">
+                <option value="">Todos</option>
+                @foreach (var tipo in Enum.GetValues<AdministraAoImoveis.Web.Domain.Enumerations.InspectionType>())
+                {
+                    <option value="@tipo" selected="@(Model.Tipo == tipo)">@tipo</option>
+                }
+            </select>
+        </div>
+        <div class="md:col-span-4 flex justify-end">
+            <button class="btn-primary" type="submit">Filtrar</button>
+        </div>
+    </form>
+
+    <div class="overflow-x-auto">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Imóvel</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Agendada para</th>
+                    <th>Responsável</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Vistorias.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-slate-500 py-6">Nenhuma vistoria encontrada.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var vistoria in Model.Vistorias)
+                    {
+                        <tr>
+                            <td>@vistoria.Imovel?.CodigoInterno</td>
+                            <td>@vistoria.Tipo</td>
+                            <td>@vistoria.Status</td>
+                            <td>@vistoria.AgendadaPara:dd/MM/yyyy HH:mm</td>
+                            <td>@vistoria.Responsavel</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

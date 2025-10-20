@@ -1,0 +1,38 @@
+@model ApplicantPortalViewModel
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Portal do Interessado";
+}
+<section class="space-y-6">
+    <header>
+        <h2 class="text-2xl font-semibold text-slate-800">Olá, @Model.Nome</h2>
+        <p class="text-sm text-slate-500">Acompanhe o andamento das suas negociações.</p>
+    </header>
+
+    <section class="card">
+        <h3 class="card-title">Negociações</h3>
+        @if (!Model.Negociacoes.Any())
+        {
+            <p class="empty-state">Nenhuma negociação vinculada a este usuário.</p>
+        }
+        else
+        {
+            <ul class="divide-y divide-slate-200">
+                @foreach (var negociacao in Model.Negociacoes)
+                {
+                    <li class="py-3">
+                        <div class="flex justify-between text-sm">
+                            <span>@negociacao.Imovel?.CodigoInterno - @negociacao.Imovel?.Titulo</span>
+                            <span class="font-semibold">@negociacao.Etapa</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Criada em @negociacao.CreatedAt:dd/MM/yyyy</p>
+                        @if (negociacao.Eventos.Any())
+                        {
+                            <p class="text-xs text-slate-500 mt-1">Última atualização: @negociacao.Eventos.OrderByDescending(e => e.OcorridoEm).First().OcorridoEm:dd/MM/yyyy HH:mm</p>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</section>

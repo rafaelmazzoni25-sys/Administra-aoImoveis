@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl shadow p-6;
+  }
+  .card-title {
+    @apply text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2;
+  }
+  .card-value {
+    @apply text-3xl font-bold text-slate-900;
+  }
+  .btn-primary {
+    @apply px-6 py-3 rounded-full uppercase tracking-wide font-semibold text-white bg-brand hover:bg-brand-dark transition;
+  }
+  .btn-secondary {
+    @apply px-4 py-2 rounded-full border border-slate-900 text-slate-900 uppercase text-xs tracking-wide font-semibold hover:bg-slate-900 hover:text-white transition;
+  }
+  .btn-link {
+    @apply text-xs uppercase tracking-wide font-semibold text-brand hover:text-brand-dark;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand;
+  }
+  .label {
+    @apply text-xs uppercase tracking-wide font-semibold text-slate-600 mb-1 block;
+  }
+  .table {
+    @apply min-w-full divide-y divide-slate-200;
+  }
+  .table th {
+    @apply text-xs font-semibold tracking-wide text-slate-500 uppercase;
+  }
+  .table td {
+    @apply text-sm text-slate-700;
+  }
+  .empty-state {
+    @apply text-sm text-slate-500 text-center border border-dashed border-slate-300 rounded-lg py-8;
+  }
+}

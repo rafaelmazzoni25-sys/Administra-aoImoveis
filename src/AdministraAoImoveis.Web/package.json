@@ -1,0 +1,14 @@
+{
+  "name": "administraaoimoveis-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./Styles/tailwind.input.css -o ./wwwroot/css/site.css --minify",
+    "watch:css": "tailwindcss -i ./Styles/tailwind.input.css -o ./wwwroot/css/site.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.32",
+    "autoprefixer": "^10.4.16"
+  }
+}
