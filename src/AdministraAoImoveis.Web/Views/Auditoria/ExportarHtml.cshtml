@@ -1,0 +1,59 @@
+@model IReadOnlyCollection<AdministraAoImoveis.Web.Domain.Entities.AuditLogEntry>
+@{
+    Layout = null;
+    var titulo = ViewData["Titulo"]?.ToString() ?? "Relatório";
+    var periodo = ViewData["Periodo"]?.ToString() ?? string.Empty;
+    string FormatDate(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <title>@titulo</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 2rem; color: #0f172a; }
+        h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        p { margin-top: 0; color: #475569; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+        th, td { border: 1px solid #cbd5f5; padding: 0.5rem; font-size: 0.8rem; }
+        th { background-color: #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em; }
+        pre { background-color: #f8fafc; padding: 0.5rem; border-radius: 0.5rem; white-space: pre-wrap; word-break: break-word; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>@titulo</h1>
+        <p>Período: @periodo</p>
+        <p>Total de registros: @Model.Count</p>
+    </header>
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Entidade</th>
+                <th>Operação</th>
+                <th>Usuário</th>
+                <th>IP</th>
+                <th>Host</th>
+                <th>Antes</th>
+                <th>Depois</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@FormatDate(item.RegistradoEm)</td>
+                    <td>@item.Entidade</td>
+                    <td>@item.Operacao</td>
+                    <td>@item.Usuario</td>
+                    <td>@item.Ip</td>
+                    <td>@item.Host</td>
+                    <td><pre>@item.Antes</pre></td>
+                    <td><pre>@item.Depois</pre></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</body>
+</html>

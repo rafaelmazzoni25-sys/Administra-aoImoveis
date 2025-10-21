@@ -1,38 +1,307 @@
 @model ApplicantPortalViewModel
+@using System.Linq
+@using AdministraAoImoveis.Web.Domain.Enumerations
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "Portal do Interessado";
+    var totalNegociacoes = Model.Negociacoes.Count;
+    var ativas = Model.Negociacoes.Count(n => n.Ativa);
+    var pendenciasFinanceiras = Model.Negociacoes.Sum(n => n.Lancamentos.Count(l => l.Status == FinancialStatus.Pendente));
+    var documentosDisponiveis = Model.Negociacoes.Sum(n => n.Documentos.Count);
+    var negociacoesAtivas = Model.Negociacoes.Where(n => n.Ativa).ToList();
 }
+
 <section class="space-y-6">
-    <header>
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success">@success</div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert alert-error">@error</div>
+    }
+
+    <header class="space-y-1">
         <h2 class="text-2xl font-semibold text-slate-800">Olá, @Model.Nome</h2>
-        <p class="text-sm text-slate-500">Acompanhe o andamento das suas negociações.</p>
+        <p class="text-sm text-slate-500">Acompanhe o andamento das suas negociações, envie documentos e converse com a equipe.</p>
     </header>
 
-    <section class="card">
-        <h3 class="card-title">Negociações</h3>
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <article class="card bg-slate-900 text-white">
+            <p class="text-xs uppercase tracking-wide text-slate-200">Negociações acompanhadas</p>
+            <p class="text-3xl font-semibold">@totalNegociacoes</p>
+        </article>
+        <article class="card">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Ativas</p>
+            <p class="text-2xl font-semibold">@ativas</p>
+        </article>
+        <article class="card">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Pendências financeiras</p>
+            <p class="text-2xl font-semibold">@pendenciasFinanceiras</p>
+        </article>
+        <article class="card">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Documentos disponíveis</p>
+            <p class="text-2xl font-semibold">@documentosDisponiveis</p>
+        </article>
+    </section>
+
+    <section class="space-y-4">
+        <h3 class="text-xl font-semibold text-slate-800">Linha do tempo das negociações</h3>
         @if (!Model.Negociacoes.Any())
         {
             <p class="empty-state">Nenhuma negociação vinculada a este usuário.</p>
         }
         else
         {
-            <ul class="divide-y divide-slate-200">
+            <div class="space-y-4">
                 @foreach (var negociacao in Model.Negociacoes)
                 {
-                    <li class="py-3">
-                        <div class="flex justify-between text-sm">
-                            <span>@negociacao.Imovel?.CodigoInterno - @negociacao.Imovel?.Titulo</span>
-                            <span class="font-semibold">@negociacao.Etapa</span>
+                    <article class="card space-y-3">
+                        <header class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                            <div>
+                                <h4 class="card-title">@negociacao.Imovel</h4>
+                                <p class="text-sm text-slate-500">@negociacao.Endereco</p>
+                            </div>
+                            <div class="text-right text-sm space-y-1">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs">@negociacao.Etapa</span>
+                                <div>Iniciada em <span class="font-semibold">@negociacao.CriadaEm.ToLocalTime().ToString("dd/MM/yyyy")</span></div>
+                                @if (negociacao.ReservadoAte.HasValue)
+                                {
+                                    <div>Reserva válida até <span class="font-semibold">@negociacao.ReservadoAte.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div>
+                                }
+                                @if (negociacao.ValorSinal.HasValue)
+                                {
+                                    <div>Valor do sinal: <span class="font-semibold">@negociacao.ValorSinal.Value.ToString("C")</span></div>
+                                }
+                            </div>
+                        </header>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 text-sm">
+                            <section class="bg-slate-50 rounded p-3 space-y-2 lg:col-span-2">
+                                <h5 class="font-semibold text-slate-700">Eventos recentes</h5>
+                                @if (!negociacao.Timeline.Any())
+                                {
+                                    <p class="text-xs text-slate-500">Nenhum evento registrado até o momento.</p>
+                                }
+                                else
+                                {
+                                    <ul class="space-y-2">
+                                        @foreach (var evento in negociacao.Timeline.Take(6))
+                                        {
+                                            <li class="border border-slate-200 rounded p-2">
+                                                <div class="flex justify-between text-xs">
+                                                    <span class="font-semibold">@evento.Titulo</span>
+                                                    <span class="text-slate-500">@evento.OcorridoEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                                </div>
+                                                <p class="text-xs text-slate-500">@evento.Responsavel</p>
+                                                @if (!string.IsNullOrWhiteSpace(evento.Descricao))
+                                                {
+                                                    <p class="text-sm text-slate-700 whitespace-pre-line">@evento.Descricao</p>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </section>
+                            <section class="bg-slate-50 rounded p-3 space-y-2">
+                                <h5 class="font-semibold text-slate-700">Pendências financeiras</h5>
+                                @if (!negociacao.Lancamentos.Any())
+                                {
+                                    <p class="text-xs text-slate-500">Nenhum lançamento registrado.</p>
+                                }
+                                else
+                                {
+                                    <ul class="space-y-1">
+                                        @foreach (var lancamento in negociacao.Lancamentos)
+                                        {
+                                            <li>
+                                                <span class="font-medium">@lancamento.TipoLancamento</span> · @lancamento.Valor.ToString("C")<br />
+                                                <span class="text-xs text-slate-500">Status: @lancamento.Status</span>
+                                                @if (lancamento.DataPrevista.HasValue)
+                                                {
+                                                    <span class="text-xs text-slate-500 block">Previsto para @lancamento.DataPrevista.Value.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                                }
+                                                @if (lancamento.DataEfetivacao.HasValue)
+                                                {
+                                                    <span class="text-xs text-slate-500 block">Liquidado em @lancamento.DataEfetivacao.Value.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </section>
                         </div>
-                        <p class="text-xs text-slate-500">Criada em @negociacao.CreatedAt:dd/MM/yyyy</p>
-                        @if (negociacao.Eventos.Any())
-                        {
-                            <p class="text-xs text-slate-500 mt-1">Última atualização: @negociacao.Eventos.OrderByDescending(e => e.OcorridoEm).First().OcorridoEm:dd/MM/yyyy HH:mm</p>
-                        }
-                    </li>
+
+                        <section class="bg-white border border-slate-200 rounded p-3 text-sm">
+                            <h5 class="font-semibold text-slate-700">Documentos enviados</h5>
+                            @if (!negociacao.Documentos.Any())
+                            {
+                                <p class="text-xs text-slate-500">Nenhum documento foi enviado para esta negociação.</p>
+                            }
+                            else
+                            {
+                                <div class="overflow-x-auto">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Categoria</th>
+                                                <th>Versão</th>
+                                                <th>Arquivo</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var documento in negociacao.Documentos)
+                                            {
+                                                <tr>
+                                                    <td>@documento.Categoria</td>
+                                                    <td>v@documento.Versao</td>
+                                                    <td>@documento.NomeArquivo</td>
+                                                    <td class="text-right">
+                                                        <a class="btn-secondary" asp-action="DownloadDocumento" asp-route-documentId="@documento.Id">Baixar</a>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+                    </article>
                 }
-            </ul>
+            </div>
         }
     </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <article class="card lg:col-span-2">
+            <h3 class="card-title">Mensagens recentes</h3>
+            @if (!Model.MensagensRecentes.Any())
+            {
+                <p class="empty-state">Você ainda não enviou ou recebeu mensagens nesta área.</p>
+            }
+            else
+            {
+                <ul class="space-y-3">
+                    @foreach (var mensagem in Model.MensagensRecentes)
+                    {
+                        <li class="border border-slate-200 rounded p-3">
+                            <div class="flex justify-between text-sm">
+                                <span class="font-semibold">@mensagem.Contexto</span>
+                                <span class="text-slate-500">@mensagem.EnviadaEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mb-1">@mensagem.Autor</p>
+                            <p class="text-sm text-slate-700 whitespace-pre-line">@mensagem.Conteudo</p>
+                        </li>
+                    }
+                </ul>
+            }
+        </article>
+        <article class="card space-y-4">
+            <section class="space-y-3">
+                <h3 class="card-title">Enviar mensagem</h3>
+                @if (!Model.PodeEnviarMensagem)
+                {
+                    <p class="empty-state">Nenhuma negociação disponível para envio de mensagens.</p>
+                }
+                else
+                {
+                    <form asp-action="PostMensagem" method="post" class="space-y-3">
+                        @Html.AntiForgeryToken()
+                        <div>
+                            <label class="label" asp-for="NovaMensagem.NegociacaoId">Negociação</label>
+                            <select class="input" asp-for="NovaMensagem.NegociacaoId">
+                                <option value="">Selecione...</option>
+                                @foreach (var negociacao in Model.Negociacoes)
+                                {
+                                    <option value="@negociacao.Id" selected="@(Model.NovaMensagem.NegociacaoId == negociacao.Id ? "selected" : null)">@negociacao.Imovel</option>
+                                }
+                            </select>
+                            <span class="text-xs text-red-600" asp-validation-for="NovaMensagem.NegociacaoId"></span>
+                        </div>
+                        <div>
+                            <label class="label" asp-for="NovaMensagem.Mensagem">Mensagem</label>
+                            <textarea class="input" rows="4" asp-for="NovaMensagem.Mensagem"></textarea>
+                            <span class="text-xs text-red-600" asp-validation-for="NovaMensagem.Mensagem"></span>
+                        </div>
+                        <button class="btn-primary w-full" type="submit">Enviar mensagem</button>
+                    </form>
+                }
+            </section>
+            <section class="space-y-3">
+                <h3 class="card-title">Enviar documento</h3>
+                @if (!Model.PodeEnviarDocumentos)
+                {
+                    <p class="empty-state">Nenhuma negociação disponível para envio de documentos.</p>
+                }
+                else
+                {
+                    <form asp-action="UploadDocumento" method="post" enctype="multipart/form-data" class="space-y-3">
+                        @Html.AntiForgeryToken()
+                        <div>
+                            <label class="label" asp-for="Upload.NegociacaoId">Negociação</label>
+                            <select class="input" asp-for="Upload.NegociacaoId">
+                                <option value="">Selecione...</option>
+                                @foreach (var negociacao in Model.Negociacoes)
+                                {
+                                    <option value="@negociacao.Id" selected="@(Model.Upload.NegociacaoId == negociacao.Id ? "selected" : null)">@negociacao.Imovel</option>
+                                }
+                            </select>
+                            <span class="text-xs text-red-600" asp-validation-for="Upload.NegociacaoId"></span>
+                        </div>
+                        <div>
+                            <label class="label" asp-for="Upload.Categoria">Tipo de documento</label>
+                            <input class="input" asp-for="Upload.Categoria" />
+                            <span class="text-xs text-red-600" asp-validation-for="Upload.Categoria"></span>
+                        </div>
+                        <div>
+                            <label class="label" asp-for="Upload.Arquivo">Arquivo</label>
+                            <input class="input" type="file" asp-for="Upload.Arquivo" />
+                            <span class="text-xs text-red-600" asp-validation-for="Upload.Arquivo"></span>
+                        </div>
+                        <button class="btn-secondary w-full" type="submit">Enviar documento</button>
+                    </form>
+                }
+            </section>
+            <section class="space-y-3">
+                <h3 class="card-title">Agendar visita</h3>
+                @if (!Model.PodeAgendarVisita)
+                {
+                    <p class="empty-state">Nenhuma negociação ativa disponível para agendamento.</p>
+                }
+                else
+                {
+                    <form asp-action="AgendarVisita" method="post" class="space-y-3">
+                        @Html.AntiForgeryToken()
+                        <div>
+                            <label class="label" asp-for="AgendamentoVisita.NegociacaoId">Negociação</label>
+                            <select class="input" asp-for="AgendamentoVisita.NegociacaoId">
+                                <option value="">Selecione...</option>
+                                @foreach (var negociacao in negociacoesAtivas)
+                                {
+                                    <option value="@negociacao.Id" selected="@(Model.AgendamentoVisita.NegociacaoId == negociacao.Id ? "selected" : null)">@negociacao.Imovel</option>
+                                }
+                            </select>
+                            <span class="text-xs text-red-600" asp-validation-for="AgendamentoVisita.NegociacaoId"></span>
+                        </div>
+                        <div>
+                            <label class="label" asp-for="AgendamentoVisita.DataHora">Data e hora</label>
+                            <input class="input" asp-for="AgendamentoVisita.DataHora" type="datetime-local" />
+                            <span class="text-xs text-red-600" asp-validation-for="AgendamentoVisita.DataHora"></span>
+                        </div>
+                        <div>
+                            <label class="label" asp-for="AgendamentoVisita.Observacoes">Observações</label>
+                            <textarea class="input" rows="3" asp-for="AgendamentoVisita.Observacoes"></textarea>
+                            <span class="text-xs text-red-600" asp-validation-for="AgendamentoVisita.Observacoes"></span>
+                        </div>
+                        <button class="btn-primary w-full" type="submit">Solicitar visita</button>
+                    </form>
+                }
+            </section>
+        </article>
+    </section>
 </section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

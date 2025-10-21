@@ -1,0 +1,74 @@
+@model MaintenanceOrderCreateViewModel
+@{
+    ViewData["Title"] = "Nova ordem de manutenção";
+}
+<section class="space-y-6">
+    <header class="card">
+        <h2 class="card-title">Registrar nova ordem</h2>
+        <p class="text-sm text-slate-500">Defina o contexto da manutenção, responsável e previsões.</p>
+    </header>
+
+    <section class="card">
+        <form asp-action="Create" method="post" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label" asp-for="Ordem.ImovelId"></label>
+                    <select class="input" asp-for="Ordem.ImovelId" asp-items="Model.Imoveis">
+                        <option value="">Selecione...</option>
+                    </select>
+                    <span class="text-xs text-red-600" asp-validation-for="Ordem.ImovelId"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="Ordem.VistoriaId"></label>
+                    <select class="input" asp-for="Ordem.VistoriaId" asp-items="Model.Vistorias">
+                        <option value="">Sem vinculação</option>
+                    </select>
+                    <span class="text-xs text-red-600" asp-validation-for="Ordem.VistoriaId"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="Ordem.Titulo"></label>
+                    <input class="input" asp-for="Ordem.Titulo" />
+                    <span class="text-xs text-red-600" asp-validation-for="Ordem.Titulo"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="Ordem.Categoria"></label>
+                    <input class="input" asp-for="Ordem.Categoria" />
+                    <span class="text-xs text-red-600" asp-validation-for="Ordem.Categoria"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="Ordem.Responsavel"></label>
+                    <input class="input" asp-for="Ordem.Responsavel" />
+                    <span class="text-xs text-red-600" asp-validation-for="Ordem.Responsavel"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="Ordem.Contato"></label>
+                    <input class="input" asp-for="Ordem.Contato" />
+                    <span class="text-xs text-red-600" asp-validation-for="Ordem.Contato"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="Ordem.CustoEstimado"></label>
+                    <input class="input" asp-for="Ordem.CustoEstimado" />
+                    <span class="text-xs text-red-600" asp-validation-for="Ordem.CustoEstimado"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="Ordem.PrevisaoConclusao"></label>
+                    <input class="input" asp-for="Ordem.PrevisaoConclusao" type="date" />
+                    <span class="text-xs text-red-600" asp-validation-for="Ordem.PrevisaoConclusao"></span>
+                </div>
+            </div>
+            <div>
+                <label class="label" asp-for="Ordem.Descricao"></label>
+                <textarea class="input h-32" asp-for="Ordem.Descricao"></textarea>
+                <span class="text-xs text-red-600" asp-validation-for="Ordem.Descricao"></span>
+            </div>
+            <div class="flex justify-end gap-3">
+                <a class="btn-secondary" asp-action="Index">Cancelar</a>
+                <button class="btn-primary" type="submit">Salvar</button>
+            </div>
+        </form>
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
