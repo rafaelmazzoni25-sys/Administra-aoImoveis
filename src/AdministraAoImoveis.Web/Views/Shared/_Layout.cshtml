@@ -10,7 +10,7 @@
     <header class="bg-sky-900 text-white shadow">
         <div class="container mx-auto px-4 py-4 flex items-center justify-between">
             <a class="text-xl font-semibold" asp-controller="Home" asp-action="Index">Administração de Imóveis</a>
-            <nav class="space-x-4 text-sm uppercase">
+            <nav class="space-x-4 text-sm uppercase flex items-center">
                 <a class="hover:underline" asp-controller="Imoveis" asp-action="Index">Imóveis</a>
                 <a class="hover:underline" asp-controller="Negociacoes" asp-action="Index">Negociações</a>
                 <a class="hover:underline" asp-controller="Vistorias" asp-action="Index">Vistorias</a>
@@ -18,6 +18,7 @@
                 <a class="hover:underline" asp-controller="Atividades" asp-action="Index">Pendências</a>
                 <a class="hover:underline" asp-controller="Atividades" asp-action="Prioridades">Prioridades</a>
                 <a class="hover:underline" asp-controller="Agenda" asp-action="Index">Agenda</a>
+                <a class="hover:underline" asp-controller="Comunicacoes" asp-action="Index">Comunicações</a>
                 <a class="hover:underline" asp-controller="Relatorios" asp-action="Indicadores">Relatórios</a>
                 <a class="hover:underline" asp-controller="Auditoria" asp-action="Index">Auditoria</a>
                 @if (User?.Identity?.IsAuthenticated ?? false)
@@ -32,6 +33,7 @@
                         <a class="hover:underline" asp-area="PortalInteressado" asp-controller="Home" asp-action="Index">Portal Interessado</a>
                     }
                 }
+                <vc:notification-bell></vc:notification-bell>
             </nav>
         </div>
     </header>

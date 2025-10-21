@@ -11,6 +11,8 @@ public class IndicatorsViewModel
     public double TempoMedioManutencaoDias { get; set; }
     public IReadOnlyDictionary<NegotiationStage, double> TempoMedioPorEtapa { get; set; } = new Dictionary<NegotiationStage, double>();
     public IReadOnlyDictionary<string, int> ConversaoPorResponsavel { get; set; } = new Dictionary<string, int>();
+    public IReadOnlyDictionary<NegotiationStage, int> NegociacoesPorEtapa { get; set; } = new Dictionary<NegotiationStage, int>();
+    public IReadOnlyDictionary<string, int> PendenciasPorSetor { get; set; } = new Dictionary<string, int>();
     public int PendenciasCriticasAbertas { get; set; }
     public decimal FinanceiroPendente { get; set; }
     public decimal FinanceiroRecebido { get; set; }

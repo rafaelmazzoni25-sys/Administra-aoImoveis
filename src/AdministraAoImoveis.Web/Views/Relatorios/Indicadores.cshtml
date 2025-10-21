@@ -1,4 +1,5 @@
 @model IndicatorsViewModel
+@using System.Linq
 @{
     ViewData["Title"] = "Indicadores";
 }
@@ -96,6 +97,51 @@
                     }
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card">
+            <h3 class="card-title">Pipeline de negociações</h3>
+            @{ var totalNegociacoes = Model.NegociacoesPorEtapa.Sum(n => n.Value); }
+            @if (totalNegociacoes == 0)
+            {
+                <p class="text-sm text-slate-500">Não há negociações ativas no momento.</p>
+            }
+            else
+            {
+                <ul class="chart-list">
+                    @foreach (var etapa in Model.NegociacoesPorEtapa.OrderBy(k => k.Key))
+                    {
+                        var percentual = totalNegociacoes == 0 ? 0 : (double)etapa.Value / totalNegociacoes * 100;
+                        <li class="chart-item">
+                            <span class="chart-label">@etapa.Key (@etapa.Value)</span>
+                            <div class="chart-bar" style="--chart-value:@percentual%;" data-value="@percentual.ToString("N1")%"></div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+        <div class="card">
+            <h3 class="card-title">Pendências por setor</h3>
+            @{ var totalPendencias = Model.PendenciasPorSetor.Sum(p => p.Value); }
+            @if (totalPendencias == 0)
+            {
+                <p class="text-sm text-slate-500">Nenhuma pendência aberta nos setores.</p>
+            }
+            else
+            {
+                <ul class="chart-list">
+                    @foreach (var setor in Model.PendenciasPorSetor.OrderByDescending(p => p.Value))
+                    {
+                        var percentual = totalPendencias == 0 ? 0 : (double)setor.Value / totalPendencias * 100;
+                        <li class="chart-item">
+                            <span class="chart-label">@setor.Key (@setor.Value)</span>
+                            <div class="chart-bar chart-bar-warning" style="--chart-value:@percentual%;" data-value="@percentual.ToString("N1")%"></div>
+                        </li>
+                    }
+                </ul>
+            }
         </div>
     </div>
 </section>

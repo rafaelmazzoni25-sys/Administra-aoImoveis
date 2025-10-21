@@ -36,6 +36,11 @@ public class RelatoriosController : Controller
             .Include(n => n.Eventos)
             .Where(n => n.CreatedAt >= start && n.CreatedAt <= end)
             .ToListAsync(cancellationToken);
+        var negociacoesPorEtapa = await _context.Negociacoes
+            .Where(n => n.Ativa)
+            .GroupBy(n => n.Etapa)
+            .Select(g => new { Etapa = g.Key, Total = g.Count() })
+            .ToListAsync(cancellationToken);
         var vistorias = await _context.Vistorias
             .Where(v => v.Inicio != null && v.Fim != null && v.Inicio >= start && v.Fim <= end)
             .ToListAsync(cancellationToken);
@@ -47,6 +52,11 @@ public class RelatoriosController : Controller
             .ToListAsync(cancellationToken);
         var pendenciasCriticas = await _context.Atividades
             .CountAsync(a => a.Prioridade == PriorityLevel.Critica && !FinalStatuses.Contains(a.Status), cancellationToken);
+        var pendenciasPorSetor = await _context.Atividades
+            .Where(a => !FinalStatuses.Contains(a.Status))
+            .GroupBy(a => string.IsNullOrWhiteSpace(a.Setor) ? "Não informado" : a.Setor)
+            .Select(g => new { Setor = g.Key, Total = g.Count() })
+            .ToListAsync(cancellationToken);
         var financeiro = await _context.LancamentosFinanceiros
             .Where(l => l.CreatedAt >= start && l.CreatedAt <= end)
             .ToListAsync(cancellationToken);
@@ -86,7 +96,9 @@ public class RelatoriosController : Controller
             FinanceiroPendente = financeiro.Where(f => f.Status == FinancialStatus.Pendente).Sum(f => f.Valor),
             FinanceiroRecebido = financeiro.Where(f => f.Status == FinancialStatus.Recebido).Sum(f => f.Valor),
             TempoMedioPorEtapa = tempoMedioPorEtapa,
-            ConversaoPorResponsavel = conversaoPorResponsavel
+            ConversaoPorResponsavel = conversaoPorResponsavel,
+            NegociacoesPorEtapa = negociacoesPorEtapa.ToDictionary(g => g.Etapa, g => g.Total),
+            PendenciasPorSetor = pendenciasPorSetor.ToDictionary(g => g.Setor, g => g.Total, StringComparer.OrdinalIgnoreCase)
         };
 
         return View(model);

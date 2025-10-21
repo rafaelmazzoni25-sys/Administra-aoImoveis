@@ -462,7 +462,8 @@ public class AgendaController : Controller
             Titulo = "Novo compromisso na agenda",
             Mensagem = $"{entrada.Titulo} em {entrada.Inicio:dd/MM/yyyy HH:mm}",
             LinkDestino = Url.Action("Index", "Agenda"),
-            Lida = false
+            Lida = false,
+            CreatedBy = User?.Identity?.Name ?? "Sistema"
         };
 
         _context.Notificacoes.Add(notificacao);

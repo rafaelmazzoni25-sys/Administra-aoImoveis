@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
 using AdministraAoImoveis.Web.Data;
+using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
 using AdministraAoImoveis.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -68,6 +70,11 @@ public class NegociacoesController : Controller
         }
 
         await RegistrarAuditoriaAsync(negotiation, "STAGE_UPDATE", cancellationToken, antes: resultado.Antes, depois: JsonSerializer.Serialize(negotiation));
+        var descricao = BuildEventoDescricao(resultado, negotiation);
+        if (!string.IsNullOrEmpty(descricao))
+        {
+            await RegistrarEventoAsync(negotiation, "Atualização de negociação", descricao, cancellationToken);
+        }
 
         TempData["Success"] = "Negociação atualizada com sucesso.";
 
@@ -113,6 +120,10 @@ public class NegociacoesController : Controller
 
         await _context.SaveChangesAsync(cancellationToken);
         await RegistrarAuditoriaAsync(negotiation, concluida ? "COMPLETE" : "CANCEL", cancellationToken, antes: null, depois: JsonSerializer.Serialize(negotiation));
+        var descricao = concluida
+            ? "Negociação concluída e contrato ativo gerado."
+            : "Negociação cancelada e imóvel liberado.";
+        await RegistrarEventoAsync(negotiation, concluida ? "Conclusão de negociação" : "Cancelamento de negociação", descricao, cancellationToken);
 
         TempData["Success"] = concluida
             ? "Negociação concluída e imóvel marcado como ocupado."
@@ -145,24 +156,29 @@ public class NegociacoesController : Controller
         }
 
         await RegistrarAuditoriaAsync(negotiation, "STAGE_UPDATE", cancellationToken, antes: resultado.Antes, depois: JsonSerializer.Serialize(negotiation));
+        var descricao = BuildEventoDescricao(resultado, negotiation);
+        if (!string.IsNullOrEmpty(descricao))
+        {
+            await RegistrarEventoAsync(negotiation, "Atualização de negociação", descricao, cancellationToken);
+        }
         return Ok(new { mensagem = "Etapa atualizada." });
     }
 
-    private async Task<(bool Sucesso, string Mensagem, string Antes)> AtualizarNegociacaoAsync(Domain.Entities.Negotiation negotiation, NegotiationStage novaEtapa, decimal? valorSinal, DateTime? reservadoAte, CancellationToken cancellationToken)
+    private async Task<NegotiationUpdateResult> AtualizarNegociacaoAsync(Negotiation negotiation, NegotiationStage novaEtapa, decimal? valorSinal, DateTime? reservadoAte, CancellationToken cancellationToken)
     {
         if (!negotiation.Ativa)
         {
-            return (false, "A negociação está encerrada.", string.Empty);
+            return new NegotiationUpdateResult(false, "A negociação está encerrada.", string.Empty, null, null, null);
         }
 
         if (valorSinal.HasValue && !reservadoAte.HasValue)
         {
-            return (false, "Informe a validade da reserva quando houver valor de sinal.", string.Empty);
+            return new NegotiationUpdateResult(false, "Informe a validade da reserva quando houver valor de sinal.", string.Empty, null, null, null);
         }
 
         if (reservadoAte.HasValue && reservadoAte <= DateTime.UtcNow)
         {
-            return (false, "A reserva deve ser futura.", string.Empty);
+            return new NegotiationUpdateResult(false, "A reserva deve ser futura.", string.Empty, null, null, null);
         }
 
         var possuiOutraAtiva = await _context.Negociacoes
@@ -170,10 +186,13 @@ public class NegociacoesController : Controller
 
         if (possuiOutraAtiva)
         {
-            return (false, "Existe outra negociação ativa para o imóvel.", string.Empty);
+            return new NegotiationUpdateResult(false, "Existe outra negociação ativa para o imóvel.", string.Empty, null, null, null);
         }
 
         var antes = JsonSerializer.Serialize(negotiation);
+        var etapaAnterior = negotiation.Etapa;
+        var valorSinalAnterior = negotiation.ValorSinal;
+        var reservadoAteAnterior = negotiation.ReservadoAte;
 
         negotiation.Etapa = novaEtapa;
         negotiation.ValorSinal = valorSinal;
@@ -198,7 +217,7 @@ public class NegociacoesController : Controller
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return (true, string.Empty, antes);
+        return new NegotiationUpdateResult(true, string.Empty, antes, etapaAnterior, valorSinalAnterior, reservadoAteAnterior);
     }
 
     private async Task RegistrarAuditoriaAsync(Domain.Entities.Negotiation negotiation, string operacao, CancellationToken cancellationToken, string? antes, string? depois)
@@ -209,4 +228,56 @@ public class NegociacoesController : Controller
 
         await _auditTrailService.RegisterAsync("Negotiation", negotiation.Id, operacao, antes ?? string.Empty, depois ?? string.Empty, usuario, ip, host, cancellationToken);
     }
+
+    private string? BuildEventoDescricao(NegotiationUpdateResult resultado, Negotiation negotiation)
+    {
+        var partes = new List<string>();
+
+        if (resultado.EtapaAnterior.HasValue && resultado.EtapaAnterior.Value != negotiation.Etapa)
+        {
+            partes.Add($"Etapa: {resultado.EtapaAnterior.Value} → {negotiation.Etapa}");
+        }
+
+        if (resultado.ValorSinalAnterior != negotiation.ValorSinal)
+        {
+            var cultura = CultureInfo.GetCultureInfo("pt-BR");
+            var antes = resultado.ValorSinalAnterior.HasValue ? resultado.ValorSinalAnterior.Value.ToString("C", cultura) : "—";
+            var depois = negotiation.ValorSinal.HasValue ? negotiation.ValorSinal.Value.ToString("C", cultura) : "—";
+            partes.Add($"Sinal: {antes} → {depois}");
+        }
+
+        if (resultado.ReservadoAteAnterior != negotiation.ReservadoAte)
+        {
+            var antes = resultado.ReservadoAteAnterior.HasValue ? resultado.ReservadoAteAnterior.Value.ToString("dd/MM/yyyy HH:mm") : "sem data";
+            var depois = negotiation.ReservadoAte.HasValue ? negotiation.ReservadoAte.Value.ToString("dd/MM/yyyy HH:mm") : "sem data";
+            partes.Add($"Reserva até: {antes} → {depois}");
+        }
+
+        return partes.Count == 0 ? null : string.Join(" | ", partes);
+    }
+
+    private async Task RegistrarEventoAsync(Negotiation negotiation, string titulo, string descricao, CancellationToken cancellationToken)
+    {
+        var responsavel = User?.Identity?.Name ?? "Sistema";
+        var evento = new NegotiationEvent
+        {
+            NegociacaoId = negotiation.Id,
+            Titulo = titulo,
+            Descricao = descricao,
+            Responsavel = responsavel,
+            OcorridoEm = DateTime.UtcNow,
+            CreatedBy = responsavel
+        };
+
+        _context.NegociacaoEventos.Add(evento);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private sealed record NegotiationUpdateResult(
+        bool Sucesso,
+        string Mensagem,
+        string Antes,
+        NegotiationStage? EtapaAnterior,
+        decimal? ValorSinalAnterior,
+        DateTime? ReservadoAteAnterior);
 }
