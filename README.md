@@ -9,6 +9,8 @@ Esta solução contém a base do sistema web local solicitado, construída com A
   - **Domain**: entidades e enums representando imóveis, negociações, vistorias, atividades, agenda, portal interno, auditoria e arquivos locais.
   - **Data**: `ApplicationDbContext` e `ApplicationDbInitializer` com configuração EF Core + Identity.
   - **Infrastructure**: serviços de armazenamento de arquivos locais e auditoria com logs em disco.
+  - **Services/Contracts**: geração de contratos agora exporta PDF automaticamente, com fallback para HTML quando necessário.
+  - **Services/DocumentExpiration**: job em segundo plano para normalizar o status de documentos expirados.
   - **Controllers/Views**: telas MVC cobrindo dashboard, imóveis, negociações (kanban), vistorias, pendências, agenda, relatórios e portais internos.
   - **wwwroot**: assets estáticos preparados para TailwindCSS (bundle local via `npm run build:css`).
 
@@ -41,12 +43,13 @@ Esta solução contém a base do sistema web local solicitado, construída com A
 
 - `appsettings.json` define a connection string e o diretório local para anexos.
 - Ajuste `FileStorage:BasePath` para a pasta desejada. Valores relativos são resolvidos a partir do `ContentRootPath` da aplicação e podem ser configurados também via variável de ambiente (`FileStorage__BasePath`).
+- A seção opcional `DocumentExpiration` permite personalizar `Interval` (TimeSpan, padrão 6h) e `RunOnStartup` para o job de expiração automática de documentos.
 - Logs de auditoria são gravados em `logs/audit-AAAAMMDD.log` dentro do diretório da aplicação.
 
 ## Próximos Passos
 
 - Publicar migrações EF Core para versionar o schema do banco de dados.
 - Refinar políticas de autorização em nível de ação e aplicar testes automatizados de autorização.
-- Automatizar rotinas de integração contínua (build, lint e testes) para garantir a qualidade do código.
+- Expandir a cobertura de testes automatizados exercitados pelo pipeline de CI.
 
 O projeto foi estruturado para operar 100% offline e pode ser estendido conforme as regras de negócio detalhadas no documento original.

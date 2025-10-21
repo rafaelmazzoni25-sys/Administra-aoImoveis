@@ -9,6 +9,7 @@ using AdministraAoImoveis.Web.Infrastructure.FileStorage;
 using AdministraAoImoveis.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using OpenHtmlToPdf;
 
 namespace AdministraAoImoveis.Web.Services.Contracts;
 
@@ -63,22 +64,55 @@ public class ContractService : IContractService
             request.DataFim);
 
         var html = ContractTemplateRenderer.Render(property, negotiation, templateData);
-        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(html));
+        var baseFileName = $"contrato-{property.CodigoInterno}-{DateTime.UtcNow:yyyyMMddHHmmss}";
 
         StoredFile? storedFile = null;
+
         try
         {
-            storedFile = await _fileStorageService.SaveAsync(
-                $"contrato-{property.CodigoInterno}-{DateTime.UtcNow:yyyyMMddHHmmss}.html",
-                "text/html",
-                stream,
-                ContractConstants.StorageCategory,
-                cancellationToken);
+            var pdfBytes = Pdf
+                .From(html)
+                .Content();
+
+            if (pdfBytes.Length > 0)
+            {
+                await using var pdfStream = new MemoryStream(pdfBytes);
+                storedFile = await _fileStorageService.SaveAsync(
+                    $"{baseFileName}.pdf",
+                    "application/pdf",
+                    pdfStream,
+                    ContractConstants.StorageCategory,
+                    cancellationToken);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Falha ao salvar o arquivo temporário do contrato para o imóvel {PropertyId}", property.Id);
-            return ContractOperationResult.Failure("Não foi possível gerar o arquivo do contrato.");
+            _logger.LogWarning(
+                ex,
+                "Falha ao gerar ou salvar PDF do contrato para o imóvel {PropertyId}. Arquivo HTML será utilizado.",
+                property.Id);
+        }
+
+        if (storedFile is null)
+        {
+            try
+            {
+                await using var htmlStream = new MemoryStream(Encoding.UTF8.GetBytes(html));
+                storedFile = await _fileStorageService.SaveAsync(
+                    $"{baseFileName}.html",
+                    "text/html",
+                    htmlStream,
+                    ContractConstants.StorageCategory,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Falha ao salvar o arquivo temporário do contrato para o imóvel {PropertyId}",
+                    property.Id);
+                return ContractOperationResult.Failure("Não foi possível gerar o arquivo do contrato.");
+            }
         }
 
         storedFile.CreatedBy = request.Usuario;

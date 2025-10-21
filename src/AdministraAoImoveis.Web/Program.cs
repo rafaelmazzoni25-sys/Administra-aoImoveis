@@ -4,6 +4,7 @@ using AdministraAoImoveis.Web.Infrastructure.FileStorage;
 using AdministraAoImoveis.Web.Infrastructure.Logging;
 using AdministraAoImoveis.Web.Services;
 using AdministraAoImoveis.Web.Services.Contracts;
+using AdministraAoImoveis.Web.Services.DocumentExpiration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<FileStorageOptions>(
     builder.Configuration.GetSection(FileStorageOptions.SectionName));
+builder.Services.Configure<PropertyDocumentExpirationOptions>(
+    builder.Configuration.GetSection(PropertyDocumentExpirationOptions.SectionName));
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
                        ?? "Server=(localdb)\\MSSQLLocalDB;Database=AdministraAoImoveis;Trusted_Connection=True;MultipleActiveResultSets=true";
@@ -42,6 +45,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IAuditTrailService, AuditTrailService>();
 builder.Services.AddScoped<IContractService, ContractService>();
+builder.Services.AddHostedService<PropertyDocumentExpirationService>();
 
 var app = builder.Build();
 
