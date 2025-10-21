@@ -342,6 +342,169 @@ public class HomeController : Controller
             mensagem.CreatedAt,
             mensagem.CreatedBy
         };
+    }
+
+    private async Task<IReadOnlyCollection<PortalMessageViewModel>> LoadMessagesAsync(
+        IReadOnlyDictionary<Guid, string> propertyLookup,
+        CancellationToken cancellationToken)
+    {
+        if (propertyLookup.Count == 0)
+        {
+            return Array.Empty<PortalMessageViewModel>();
+        }
+
+        var propertyIds = propertyLookup.Keys.ToArray();
+
+        var mensagens = await _context.Mensagens
+            .AsNoTracking()
+            .Where(m => m.ContextoTipo == ActivityLinkType.Imovel && propertyIds.Contains(m.ContextoId))
+            .OrderByDescending(m => m.EnviadaEm)
+            .Take(20)
+            .Select(m => new
+            {
+                m.Id,
+                m.ContextoId,
+                m.Mensagem,
+                m.EnviadaEm,
+                Autor = _context.Users
+                    .Where(u => u.Id == m.UsuarioId)
+                    .Select(u => string.IsNullOrWhiteSpace(u.NomeCompleto)
+                        ? u.Email ?? u.UserName ?? "Usuário"
+                        : u.NomeCompleto)
+                    .FirstOrDefault()
+            })
+            .ToListAsync(cancellationToken);
+
+        return mensagens
+            .Select(m => new PortalMessageViewModel
+            {
+                Id = m.Id,
+                Contexto = propertyLookup.TryGetValue(m.ContextoId, out var contexto) ? contexto : "Imóvel",
+                Autor = string.IsNullOrWhiteSpace(m.Autor) ? "Usuário" : m.Autor!,
+                EnviadaEm = m.EnviadaEm,
+                Conteudo = m.Mensagem
+            })
+            .ToList();
+    }
+
+    private static OwnerPortalPropertyViewModel MapProperty(Property property)
+    {
+        var endereco = string.Join(" ", new[]
+        {
+            property.Endereco,
+            string.IsNullOrWhiteSpace(property.Bairro) ? null : $"- {property.Bairro}",
+            $"- {property.Cidade}/{property.Estado}"
+        }.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+        var proximasVistorias = property.Vistorias
+            .Where(v => v.Status != InspectionStatus.Concluida)
+            .OrderBy(v => v.AgendadaPara)
+            .Take(3)
+            .Select(v => new OwnerPortalInspectionSummary
+            {
+                Id = v.Id,
+                Status = v.Status,
+                Tipo = v.Tipo,
+                AgendadaPara = v.AgendadaPara,
+                Responsavel = v.Responsavel
+            })
+            .ToList();
+
+        var manutencoesAbertas = property.Manutencoes
+            .Where(m => m.Status is not MaintenanceOrderStatus.Concluida and not MaintenanceOrderStatus.Cancelada)
+            .OrderBy(m => m.PrevisaoConclusao ?? DateTime.MaxValue)
+            .Take(3)
+            .Select(m => new OwnerPortalMaintenanceSummary
+            {
+                Id = m.Id,
+                Titulo = m.Titulo,
+                Status = m.Status,
+                PrevisaoConclusao = m.PrevisaoConclusao,
+                Responsavel = m.Responsavel
+            })
+            .ToList();
+
+        var negociacoesAtivas = property.Negociacoes
+            .Where(n => n.Ativa)
+            .OrderByDescending(n => n.CreatedAt)
+            .Select(n => new OwnerPortalNegotiationSummary
+            {
+                Id = n.Id,
+                Etapa = n.Etapa,
+                CriadaEm = n.CreatedAt,
+                ReservadoAte = n.ReservadoAte,
+                ValorSinal = n.ValorSinal,
+                Interessado = n.Interessado?.Nome ?? string.Empty,
+                TotalPrevisto = n.LancamentosFinanceiros.Sum(l => l.Valor),
+                TotalRecebido = n.LancamentosFinanceiros.Where(l => l.Status == FinancialStatus.Recebido).Sum(l => l.Valor),
+                TotalPendente = n.LancamentosFinanceiros.Where(l => l.Status == FinancialStatus.Pendente).Sum(l => l.Valor)
+            })
+            .ToList();
+
+        var pendenciasCriticas = property.Atividades
+            .Count(a => a.Status is not ActivityStatus.Concluida and not ActivityStatus.Cancelada && a.Prioridade == PriorityLevel.Critica);
+
+        return new OwnerPortalPropertyViewModel
+        {
+            Id = property.Id,
+            CodigoInterno = property.CodigoInterno,
+            Titulo = property.Titulo,
+            Endereco = endereco,
+            Status = property.StatusDisponibilidade,
+            DisponivelEm = property.DataPrevistaDisponibilidade,
+            PendenciasCriticas = pendenciasCriticas,
+            ProximasVistorias = proximasVistorias,
+            ManutencoesEmAberto = manutencoesAbertas,
+            NegociacoesAtivas = negociacoesAtivas
+        };
+    }
+
+    private async Task RegistrarAuditoriaMensagemAsync(
+        ContextMessage mensagem,
+        string operacao,
+        string antes,
+        string depois,
+        CancellationToken cancellationToken)
+    {
+        var usuario = User?.Identity?.Name ?? "Portal";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
+
+        await _auditTrailService.RegisterAsync(
+            "ContextMessage",
+            mensagem.Id,
+            operacao,
+            antes,
+            depois,
+            usuario,
+            ip,
+            host,
+            cancellationToken);
+    }
+
+    private static string SerializeMensagem(ContextMessage mensagem)
+    {
+        var payload = new
+        {
+            mensagem.Id,
+            mensagem.ContextoTipo,
+            mensagem.ContextoId,
+            mensagem.UsuarioId,
+            mensagem.Mensagem,
+            mensagem.EnviadaEm,
+            mensagem.CreatedAt,
+            mensagem.CreatedBy
+        };
+    }
+
+    private async Task<IReadOnlyCollection<PortalMessageViewModel>> LoadMessagesAsync(
+        IReadOnlyDictionary<Guid, string> propertyLookup,
+        CancellationToken cancellationToken)
+    {
+        if (propertyLookup.Count == 0)
+        {
+            return Array.Empty<PortalMessageViewModel>();
+        }
 
         return JsonSerializer.Serialize(payload);
     }
