@@ -1,0 +1,80 @@
+@model InspectionFormViewModel
+@using AdministraAoImoveis.Web.Domain.Enumerations
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Editar vistoria" : "Agendar vistoria";
+    var disabled = Model.Id.HasValue && !Model.PodeEditar;
+}
+
+<section class="space-y-4 max-w-3xl">
+    <header>
+        <h2 class="text-2xl font-semibold text-slate-800">@ViewData["Title"]</h2>
+        <p class="text-sm text-slate-500">Cadastre ou atualize vistorias para alimentar o bloqueio automático de disponibilidade.</p>
+    </header>
+
+    <form asp-action="@(Model.Id.HasValue ? "Edit" : "Create")" method="post" class="space-y-6">
+        @Html.AntiForgeryToken()
+        @if (Model.Id.HasValue)
+        {
+            <input type="hidden" asp-for="Id" />
+        }
+
+        <div asp-validation-summary="ModelOnly" class="alert alert-error"></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label asp-for="ImovelId" class="input-label"></label>
+                <select asp-for="ImovelId" class="input" @(disabled ? "disabled" : string.Empty)>
+                    <option value="">Selecione</option>
+                    @foreach (var imovel in Model.Imoveis)
+                    {
+                        <option value="@imovel.Id" selected="@(Model.ImovelId == imovel.Id)">@imovel.Codigo</option>
+                    }
+                </select>
+                <span asp-validation-for="ImovelId" class="input-validation"></span>
+            </div>
+            <div>
+                <label asp-for="Tipo" class="input-label"></label>
+                <select asp-for="Tipo" class="input" @(disabled ? "disabled" : string.Empty)>
+                    @foreach (var tipo in Enum.GetValues<InspectionType>())
+                    {
+                        <option value="@tipo" selected="@(Model.Tipo == tipo)">@tipo</option>
+                    }
+                </select>
+                <span asp-validation-for="Tipo" class="input-validation"></span>
+            </div>
+            <div>
+                <label asp-for="AgendadaPara" class="input-label"></label>
+                <input asp-for="AgendadaPara" class="input" type="datetime-local" value="@Model.AgendadaPara.ToLocalTime().ToString("yyyy-MM-ddTHH:mm")" @(disabled ? "disabled" : string.Empty) />
+                <span asp-validation-for="AgendadaPara" class="input-validation"></span>
+            </div>
+            <div>
+                <label asp-for="Responsavel" class="input-label"></label>
+                <input asp-for="Responsavel" class="input" @(disabled ? "disabled" : string.Empty) />
+                <span asp-validation-for="Responsavel" class="input-validation"></span>
+            </div>
+        </div>
+
+        <div>
+            <label asp-for="ChecklistJson" class="input-label"></label>
+            <textarea asp-for="ChecklistJson" class="input" rows="4" @(disabled ? "disabled" : string.Empty)></textarea>
+            <span asp-validation-for="ChecklistJson" class="input-validation"></span>
+        </div>
+
+        <div>
+            <label asp-for="Observacoes" class="input-label"></label>
+            <textarea asp-for="Observacoes" class="input" rows="4" @(disabled ? "disabled" : string.Empty)></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2">
+            <a class="btn-secondary" asp-action="Index">Cancelar</a>
+            @if (!disabled)
+            {
+                <button class="btn btn-primary" type="submit">Salvar</button>
+            }
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

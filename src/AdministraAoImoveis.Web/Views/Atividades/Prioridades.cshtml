@@ -1,0 +1,132 @@
+@model ActivityPriorityMatrixViewModel
+@using System
+@using System.Linq
+@using AdministraAoImoveis.Web.Domain.Enumerations
+@{
+    ViewData["Title"] = "Controle de Prioridades";
+    var prioridades = Enum.GetValues<PriorityLevel>().OrderByDescending(p => p).ToArray();
+    var responsaveis = Model.Responsaveis.Any() ? Model.Responsaveis : Array.Empty<string>();
+    var colunas = responsaveis.Concat(new[] { "Sem responsável" }).ToArray();
+}
+
+<section class="space-y-4">
+    <header class="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+        <div>
+            <h2 class="text-2xl font-semibold text-slate-800">Matriz urgência x impacto</h2>
+            <p class="text-sm text-slate-500">Atualizado em @Model.AtualizadoEm:dd/MM/yyyy HH:mm</p>
+        </div>
+        <a class="btn-secondary" asp-action="Index">Voltar para lista</a>
+    </header>
+
+    <form asp-antiforgery="true" id="antiforgery-prioridades"></form>
+
+    <div class="priority-matrix" data-update-url="@Url.Action("AlterarResponsavel")">
+        <div class="priority-header">
+            <span>Prioridade</span>
+            @foreach (var coluna in colunas)
+            {
+                <span>@coluna</span>
+            }
+        </div>
+        @foreach (var prioridade in prioridades)
+        {
+            <div class="priority-row" data-prioridade="@prioridade">
+                <div class="priority-label">@prioridade</div>
+                @foreach (var coluna in colunas)
+                {
+                    var lista = Model.PorPrioridade.TryGetValue(prioridade, out var atividades) ? atividades : Array.Empty<AdministraAoImoveis.Web.Domain.Entities.Activity>();
+                    var atividadesFiltradas = lista.Where(a =>
+                        string.IsNullOrWhiteSpace(coluna) ? string.IsNullOrWhiteSpace(a.Responsavel) : string.Equals(a.Responsavel, coluna, StringComparison.OrdinalIgnoreCase)).ToList();
+                    <div class="priority-cell" data-responsavel="@coluna">
+                        @if (!atividadesFiltradas.Any())
+                        {
+                            <span class="cell-placeholder">Arraste atividades aqui</span>
+                        }
+                        else
+                        {
+                            foreach (var atividade in atividadesFiltradas)
+                            {
+                                var prazo = atividade.DataLimite?.ToString("dd/MM HH:mm") ?? "Sem prazo";
+                                <article class="priority-card" draggable="true" data-atividade-id="@atividade.Id" data-responsavel="@atividade.Responsavel">
+                                    <header>
+                                        <strong>@atividade.Titulo</strong>
+                                        <span class="badge @(atividade.Prioridade == PriorityLevel.Critica ? "badge-warning" : "")">@atividade.Prioridade</span>
+                                    </header>
+                                    <p class="text-xs text-slate-600">Prazo: @prazo</p>
+                                    <footer>@atividade.Status</footer>
+                                </article>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const matrix = document.querySelector('.priority-matrix');
+            if (!matrix) {
+                return;
+            }
+
+            const updateUrl = matrix.dataset.updateUrl;
+            const antiforgery = document.querySelector('#antiforgery-prioridades input[name="__RequestVerificationToken"]');
+            let dragged = null;
+
+            matrix.querySelectorAll('.priority-card').forEach(card => {
+                card.addEventListener('dragstart', () => {
+                    dragged = card;
+                    card.classList.add('kanban-dragging');
+                });
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('kanban-dragging');
+                    dragged = null;
+                });
+            });
+
+            matrix.querySelectorAll('.priority-cell').forEach(cell => {
+                cell.addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                    cell.classList.add('kanban-drop');
+                });
+                cell.addEventListener('dragleave', () => cell.classList.remove('kanban-drop'));
+                cell.addEventListener('drop', async (event) => {
+                    event.preventDefault();
+                    cell.classList.remove('kanban-drop');
+                    if (!dragged) {
+                        return;
+                    }
+
+                    const atividadeId = dragged.dataset.atividadeId;
+                    const novoResponsavel = cell.dataset.responsavel === 'Sem responsável' ? '' : cell.dataset.responsavel;
+
+                    try {
+                        const response = await fetch(updateUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': antiforgery?.value ?? ''
+                            },
+                            body: JSON.stringify({ id: atividadeId, novoResponsavel: novoResponsavel })
+                        });
+
+                        if (!response.ok) {
+                            const payload = await response.json().catch(() => ({}));
+                            alert(payload.erro ?? 'Não foi possível alterar o responsável.');
+                            return;
+                        }
+
+                        cell.appendChild(dragged);
+                        dragged.dataset.responsavel = novoResponsavel ?? '';
+                    }
+                    catch {
+                        alert('Falha de comunicação ao atualizar responsável.');
+                    }
+                });
+            });
+        })();
+    </script>
+}

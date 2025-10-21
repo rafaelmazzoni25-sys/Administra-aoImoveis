@@ -1,11 +1,20 @@
 @model PropertyDetailViewModel
+@using System
 @{
     ViewData["Title"] = "Detalhes do Imóvel";
 }
 <section class="space-y-8">
-    <header class="card">
-        <h2 class="card-title">@Model.CodigoInterno - @Model.Titulo</h2>
-        <p class="text-sm text-slate-500">@Model.Endereco - @Model.Bairro - @Model.Cidade/@Model.Estado</p>
+    <header class="card space-y-3">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <h2 class="card-title">@Model.CodigoInterno - @Model.Titulo</h2>
+                <p class="text-sm text-slate-500">@Model.Endereco - @Model.Bairro - @Model.Cidade/@Model.Estado</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a class="btn-secondary" asp-action="Edit" asp-route-id="@Model.Id">Editar cadastro</a>
+                <a class="btn-secondary" asp-action="Index">Voltar</a>
+            </div>
+        </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm mt-4">
             <div>Área: <strong>@Model.Area m²</strong></div>
             <div>Quartos: <strong>@Model.Quartos</strong></div>
@@ -14,6 +23,26 @@
         </div>
         <p class="mt-4 text-xs uppercase tracking-wide text-slate-500">Status atual: <strong>@Model.StatusDisponibilidade</strong></p>
         <p class="text-xs text-slate-500">Disponível a partir de: @(Model.DataPrevistaDisponibilidade?.ToString("dd/MM/yyyy") ?? "--")</p>
+        <form asp-action="AlterarDisponibilidade" method="post" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div>
+                <label class="input-label" for="statusDisponibilidade">Novo status</label>
+                <select id="statusDisponibilidade" name="status" class="input">
+                    @foreach (var status in Enum.GetValues(typeof(AdministraAoImoveis.Web.Domain.Enumerations.AvailabilityStatus)).Cast<AdministraAoImoveis.Web.Domain.Enumerations.AvailabilityStatus>())
+                    {
+                        <option value="@status">@status</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="input-label" for="disponivelEm">Disponível em (opcional)</label>
+                <input id="disponivelEm" name="disponivelEm" type="datetime-local" class="input" />
+            </div>
+            <div class="md:col-span-2 flex justify-end">
+                <button class="btn btn-primary" type="submit">Atualizar disponibilidade</button>
+            </div>
+        </form>
     </header>
 
     <section class="card">
