@@ -1,0 +1,81 @@
+@model ContractListViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Contratos";
+    var cultura = CultureInfo.GetCultureInfo("pt-BR");
+}
+
+<section class="space-y-6">
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+            <h1 class="page-title">Contratos</h1>
+            <p class="text-sm text-slate-500">Acompanhe a vigência e o status dos contratos de locação.</p>
+        </div>
+        <div class="flex gap-2">
+            <a class="btn-secondary" asp-controller="Imoveis" asp-action="Index">Imóveis</a>
+            <a class="btn-secondary" asp-controller="Negociacoes" asp-action="Index">Negociações</a>
+        </div>
+    </header>
+
+    <section class="card space-y-4">
+        <form method="get" class="flex items-center gap-2 text-sm">
+            <label class="inline-flex items-center gap-2">
+                <input type="checkbox" name="incluirEncerrados" value="true" @(Model.IncluirEncerrados ? "checked" : string.Empty) onchange="this.form.submit()" />
+                Incluir contratos encerrados
+            </label>
+        </form>
+
+        @if (!Model.Contratos.Any())
+        {
+            <p class="empty-state">Nenhum contrato encontrado para os filtros selecionados.</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="table text-sm">
+                    <thead>
+                        <tr>
+                            <th>Imóvel</th>
+                            <th>Interessado</th>
+                            <th>Vigência</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var contrato in Model.Contratos)
+                        {
+                            var inicio = contrato.DataInicio.ToString("dd/MM/yyyy");
+                            var fim = contrato.DataFim?.ToString("dd/MM/yyyy") ?? "--";
+                            <tr>
+                                <td class="font-semibold">@contrato.PropertyCode<br /><span class="text-xs text-slate-500">@contrato.PropertyTitle</span></td>
+                                <td>@(string.IsNullOrWhiteSpace(contrato.Interessado) ? "—" : contrato.Interessado)</td>
+                                <td>@inicio - @fim</td>
+                                <td>
+                                    <div class="flex flex-col">
+                                        <span>@contrato.ValorAluguel.ToString("C", cultura)</span>
+                                        <span class="text-xs text-slate-500">Encargos: @contrato.Encargos.ToString("C", cultura)</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (contrato.Ativo)
+                                    {
+                                        <span class="badge-success">Ativo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-muted">Encerrado</span>
+                                    }
+                                </td>
+                                <td class="text-right">
+                                    <a class="link" asp-action="Details" asp-route-id="@contrato.Id">Detalhes</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</section>

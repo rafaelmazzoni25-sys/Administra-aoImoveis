@@ -18,4 +18,5 @@ public class Negotiation : BaseEntity
     public ICollection<Activity> Atividades { get; set; } = new List<Activity>();
     public ICollection<NegotiationDocument> Documentos { get; set; } = new List<NegotiationDocument>();
     public ICollection<FinancialTransaction> LancamentosFinanceiros { get; set; } = new List<FinancialTransaction>();
+    public ICollection<Contract> Contratos { get; set; } = new List<Contract>();
 }

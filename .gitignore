@@ -17,3 +17,6 @@ node_modules/
 
 # Tailwind build cache
 src/AdministraAoImoveis.Web/wwwroot/css/site.css.map
+
+# Local file storage
+storage/

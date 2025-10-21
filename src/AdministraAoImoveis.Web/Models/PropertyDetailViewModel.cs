@@ -27,6 +27,8 @@ public class PropertyDetailViewModel
     public IReadOnlyCollection<PropertyHistoryEvent> Historico { get; set; } = Array.Empty<PropertyHistoryEvent>();
     public IReadOnlyCollection<PropertyDocumentSummaryViewModel> Documentos { get; set; } = Array.Empty<PropertyDocumentSummaryViewModel>();
     public IReadOnlyCollection<PropertyMaintenanceSummaryViewModel> Manutencoes { get; set; } = Array.Empty<PropertyMaintenanceSummaryViewModel>();
+    public ContractSummaryViewModel? ContratoAtivo { get; set; }
+    public IReadOnlyCollection<ContractSummaryViewModel> Contratos { get; set; } = Array.Empty<ContractSummaryViewModel>();
 }
 
 public class PropertyMaintenanceSummaryViewModel
