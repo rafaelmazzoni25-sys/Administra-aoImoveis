@@ -2,27 +2,36 @@ name: CI
 
 on:
   push:
-    branches: ["*"]
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: 8.0.x
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore AdministraAoImoveis.sln
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build AdministraAoImoveis.sln --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release
+      - name: Run tests
+        run: dotnet test AdministraAoImoveis.sln --configuration Release --no-build
+
+      - name: Install dotnet format
+        run: dotnet tool update -g dotnet-format
+
+      - name: Lint
+        run: dotnet format AdministraAoImoveis.sln --verify-no-changes
+        env:
+          PATH: ${{ env.PATH }}:/home/runner/.dotnet/tools

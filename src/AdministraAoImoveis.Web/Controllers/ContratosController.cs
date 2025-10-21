@@ -274,8 +274,6 @@ public class ContratosController : Controller
     [HttpGet("{id:guid}/documentos/{documentId:guid}/download")]
     public async Task<IActionResult> Download(Guid id, Guid documentId, CancellationToken cancellationToken = default)
     {
-        var documento = await _context.PropertyDocuments
-            .Include(d => d.Arquivo)
         var contrato = await _context.Contratos
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
@@ -287,7 +285,11 @@ public class ContratosController : Controller
 
         var documento = await _context.PropertyDocuments
             .Include(d => d.Arquivo)
-            .FirstOrDefaultAsync(d => d.Id == documentId && d.ImovelId == contrato.ImovelId, cancellationToken);
+            .FirstOrDefaultAsync(
+                d => d.Id == documentId
+                     && d.ImovelId == contrato.ImovelId
+                     && d.Descricao == ContractConstants.DocumentDescription,
+                cancellationToken);
 
         if (documento is null || documento.Arquivo is null)
         {

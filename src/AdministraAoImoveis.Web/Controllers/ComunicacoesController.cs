@@ -286,122 +286,122 @@ public class ComunicacoesController : Controller
         switch (contextoTipo)
         {
             case ActivityLinkType.Imovel:
-            {
-                var property = await _context.Imoveis
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(i => i.Id == contextoId, cancellationToken);
-                if (property is null)
                 {
-                    return null;
+                    var property = await _context.Imoveis
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(i => i.Id == contextoId, cancellationToken);
+                    if (property is null)
+                    {
+                        return null;
+                    }
+
+                    var descricao = string.Join(" ", new[]
+                    {
+                        property.Endereco,
+                        string.IsNullOrWhiteSpace(property.Bairro) ? null : property.Bairro,
+                        string.IsNullOrWhiteSpace(property.Cidade) ? null : property.Cidade
+                    }.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+                    return new ContextSummaryViewModel
+                    {
+                        ContextoTipo = contextoTipo,
+                        ContextoId = contextoId,
+                        Titulo = $"Imóvel {property.CodigoInterno}",
+                        Descricao = descricao,
+                        LinkDestino = Url.Action("Details", "Imoveis", new { id = contextoId })
+                    };
                 }
-
-                var descricao = string.Join(" ", new[]
-                {
-                    property.Endereco,
-                    string.IsNullOrWhiteSpace(property.Bairro) ? null : property.Bairro,
-                    string.IsNullOrWhiteSpace(property.Cidade) ? null : property.Cidade
-                }.Where(p => !string.IsNullOrWhiteSpace(p)));
-
-                return new ContextSummaryViewModel
-                {
-                    ContextoTipo = contextoTipo,
-                    ContextoId = contextoId,
-                    Titulo = $"Imóvel {property.CodigoInterno}",
-                    Descricao = descricao,
-                    LinkDestino = Url.Action("Details", "Imoveis", new { id = contextoId })
-                };
-            }
             case ActivityLinkType.Negociacao:
-            {
-                var negotiation = await _context.Negociacoes
-                    .AsNoTracking()
-                    .Include(n => n.Imovel)
-                    .FirstOrDefaultAsync(n => n.Id == contextoId, cancellationToken);
-                if (negotiation is null)
                 {
-                    return null;
+                    var negotiation = await _context.Negociacoes
+                        .AsNoTracking()
+                        .Include(n => n.Imovel)
+                        .FirstOrDefaultAsync(n => n.Id == contextoId, cancellationToken);
+                    if (negotiation is null)
+                    {
+                        return null;
+                    }
+
+                    var descricao = negotiation.Imovel is null
+                        ? string.Empty
+                        : $"{negotiation.Imovel.CodigoInterno} - {negotiation.Imovel.Titulo}";
+
+                    return new ContextSummaryViewModel
+                    {
+                        ContextoTipo = contextoTipo,
+                        ContextoId = contextoId,
+                        Titulo = $"Negociação ({negotiation.Etapa})",
+                        Descricao = descricao,
+                        LinkDestino = Url.Action("Index", "Negociacoes")
+                    };
                 }
-
-                var descricao = negotiation.Imovel is null
-                    ? string.Empty
-                    : $"{negotiation.Imovel.CodigoInterno} - {negotiation.Imovel.Titulo}";
-
-                return new ContextSummaryViewModel
-                {
-                    ContextoTipo = contextoTipo,
-                    ContextoId = contextoId,
-                    Titulo = $"Negociação ({negotiation.Etapa})",
-                    Descricao = descricao,
-                    LinkDestino = Url.Action("Index", "Negociacoes")
-                };
-            }
             case ActivityLinkType.Vistoria:
-            {
-                var vistoria = await _context.Vistorias
-                    .AsNoTracking()
-                    .Include(v => v.Imovel)
-                    .FirstOrDefaultAsync(v => v.Id == contextoId, cancellationToken);
-                if (vistoria is null)
                 {
-                    return null;
+                    var vistoria = await _context.Vistorias
+                        .AsNoTracking()
+                        .Include(v => v.Imovel)
+                        .FirstOrDefaultAsync(v => v.Id == contextoId, cancellationToken);
+                    if (vistoria is null)
+                    {
+                        return null;
+                    }
+
+                    var descricao = vistoria.Imovel is null
+                        ? string.Empty
+                        : $"{vistoria.Imovel.CodigoInterno} - {vistoria.Imovel.Titulo}";
+
+                    return new ContextSummaryViewModel
+                    {
+                        ContextoTipo = contextoTipo,
+                        ContextoId = contextoId,
+                        Titulo = $"Vistoria {vistoria.Tipo}",
+                        Descricao = descricao,
+                        LinkDestino = Url.Action("Details", "Vistorias", new { id = contextoId })
+                    };
                 }
-
-                var descricao = vistoria.Imovel is null
-                    ? string.Empty
-                    : $"{vistoria.Imovel.CodigoInterno} - {vistoria.Imovel.Titulo}";
-
-                return new ContextSummaryViewModel
-                {
-                    ContextoTipo = contextoTipo,
-                    ContextoId = contextoId,
-                    Titulo = $"Vistoria {vistoria.Tipo}",
-                    Descricao = descricao,
-                    LinkDestino = Url.Action("Details", "Vistorias", new { id = contextoId })
-                };
-            }
             case ActivityLinkType.Contrato:
-            {
-                var contrato = await _context.Contratos
-                    .AsNoTracking()
-                    .Include(c => c.Imovel)
-                    .FirstOrDefaultAsync(c => c.Id == contextoId, cancellationToken);
-                if (contrato is null)
                 {
-                    return null;
+                    var contrato = await _context.Contratos
+                        .AsNoTracking()
+                        .Include(c => c.Imovel)
+                        .FirstOrDefaultAsync(c => c.Id == contextoId, cancellationToken);
+                    if (contrato is null)
+                    {
+                        return null;
+                    }
+
+                    var descricao = contrato.Imovel is null
+                        ? string.Empty
+                        : $"{contrato.Imovel.CodigoInterno} - {contrato.Imovel.Titulo}";
+
+                    return new ContextSummaryViewModel
+                    {
+                        ContextoTipo = contextoTipo,
+                        ContextoId = contextoId,
+                        Titulo = contrato.Ativo ? "Contrato ativo" : "Contrato encerrado",
+                        Descricao = descricao,
+                        LinkDestino = Url.Action("Details", "Contratos", new { id = contrato.Id })
+                    };
                 }
-
-                var descricao = contrato.Imovel is null
-                    ? string.Empty
-                    : $"{contrato.Imovel.CodigoInterno} - {contrato.Imovel.Titulo}";
-
-                return new ContextSummaryViewModel
-                {
-                    ContextoTipo = contextoTipo,
-                    ContextoId = contextoId,
-                    Titulo = contrato.Ativo ? "Contrato ativo" : "Contrato encerrado",
-                    Descricao = descricao,
-                    LinkDestino = Url.Action("Details", "Contratos", new { id = contrato.Id })
-                };
-            }
             case ActivityLinkType.Atividade:
-            {
-                var atividade = await _context.Atividades
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(a => a.Id == contextoId, cancellationToken);
-                if (atividade is null)
                 {
-                    return null;
-                }
+                    var atividade = await _context.Atividades
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(a => a.Id == contextoId, cancellationToken);
+                    if (atividade is null)
+                    {
+                        return null;
+                    }
 
-                return new ContextSummaryViewModel
-                {
-                    ContextoTipo = contextoTipo,
-                    ContextoId = contextoId,
-                    Titulo = $"Atividade: {atividade.Titulo}",
-                    Descricao = $"Status {atividade.Status} | Prioridade {atividade.Prioridade}",
-                    LinkDestino = Url.Action("Details", "Atividades", new { id = contextoId })
-                };
-            }
+                    return new ContextSummaryViewModel
+                    {
+                        ContextoTipo = contextoTipo,
+                        ContextoId = contextoId,
+                        Titulo = $"Atividade: {atividade.Titulo}",
+                        Descricao = $"Status {atividade.Status} | Prioridade {atividade.Prioridade}",
+                        LinkDestino = Url.Action("Details", "Atividades", new { id = contextoId })
+                    };
+                }
             default:
                 return null;
         }
