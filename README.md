@@ -45,9 +45,8 @@ Esta solução contém a base do sistema web local solicitado, construída com A
 
 ## Próximos Passos
 
-- Criar migrações EF Core para controlar o schema.
-- Implementar ações CRUD completas e regras específicas por módulo.
-- Adicionar políticas de autorização refinadas por perfil.
-- Expandir notificações in-app e dashboards.
+- Publicar migrações EF Core para versionar o schema do banco de dados.
+- Refinar políticas de autorização em nível de ação e aplicar testes automatizados de autorização.
+- Automatizar rotinas de integração contínua (build, lint e testes) para garantir a qualidade do código.
 
 O projeto foi estruturado para operar 100% offline e pode ser estendido conforme as regras de negócio detalhadas no documento original.

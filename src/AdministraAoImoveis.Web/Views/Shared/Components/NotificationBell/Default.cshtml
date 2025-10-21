@@ -1,0 +1,34 @@
+@model NotificationBellViewModel
+
+<details class="notification-bell">
+    <summary>
+        <span class="bell-icon">🔔</span>
+        <span class="bell-count">@Model.NaoLidas</span>
+    </summary>
+    <div class="notification-panel">
+        <header class="notification-panel-header">
+            <span>Notificações recentes</span>
+            <a class="btn-link" asp-controller="Notificacoes" asp-action="Index">Ver todas</a>
+        </header>
+        @if (!Model.Recentes.Any())
+        {
+            <p class="text-xs text-slate-500">Sem notificações no momento.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var item in Model.Recentes)
+                {
+                    <li class="@(item.Lida ? "notification-mini-read" : string.Empty)">
+                        <strong>@item.Titulo</strong>
+                        <p>@item.Mensagem</p>
+                        @if (!string.IsNullOrWhiteSpace(item.LinkDestino))
+                        {
+                            <a class="btn-link" href="@item.LinkDestino">Abrir</a>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</details>

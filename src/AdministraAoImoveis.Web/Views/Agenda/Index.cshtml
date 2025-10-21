@@ -3,7 +3,20 @@
     ViewData["Title"] = "Agenda Interna";
 }
 <section class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-semibold text-slate-800">Agenda interna</h2>
+        <a class="btn btn-primary" asp-action="Create">Novo compromisso</a>
+    </div>
+    <form asp-antiforgery="true" id="agenda-antiforgery"></form>
     <form method="get" class="bg-white p-4 rounded shadow flex flex-wrap gap-4 items-end">
+        <div>
+            <label class="label" for="modo">Modo</label>
+            <select class="input" id="modo" name="modo">
+                <option value="@AgendaViewMode.Semana" selected="@(Model.ModoVisualizacao == AgendaViewMode.Semana ? "selected" : null)">Semanal</option>
+                <option value="@AgendaViewMode.Mes" selected="@(Model.ModoVisualizacao == AgendaViewMode.Mes ? "selected" : null)">Mensal</option>
+                <option value="@AgendaViewMode.Personalizado" selected="@(Model.ModoVisualizacao == AgendaViewMode.Personalizado ? "selected" : null)">Personalizado</option>
+            </select>
+        </div>
         <div>
             <label class="label" for="inicio">Início</label>
             <input class="input" type="date" id="inicio" name="inicio" value="@Model.Inicio.ToString("yyyy-MM-dd")" />
@@ -12,37 +25,98 @@
             <label class="label" for="fim">Fim</label>
             <input class="input" type="date" id="fim" name="fim" value="@Model.Fim.ToString("yyyy-MM-dd")" />
         </div>
+        <div>
+            <label class="label" for="tipo">Tipo</label>
+            <select class="input" id="tipo" name="tipo">
+                <option value="">Todos</option>
+                @foreach (var tipo in Model.TiposDisponiveis)
+                {
+                    var selected = string.Equals(tipo, Model.TipoSelecionado, System.StringComparison.OrdinalIgnoreCase) ? "selected" : null;
+                    <option value="@tipo" selected="@selected">@tipo</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="label" for="responsavel">Responsável</label>
+            <select class="input" id="responsavel" name="responsavel">
+                <option value="">Todos</option>
+                @foreach (var responsavel in Model.ResponsaveisDisponiveis)
+                {
+                    var selected = string.Equals(responsavel, Model.ResponsavelSelecionado, System.StringComparison.OrdinalIgnoreCase) ? "selected" : null;
+                    <option value="@responsavel" selected="@selected">@responsavel</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="label" for="setor">Setor</label>
+            <select class="input" id="setor" name="setor">
+                <option value="">Todos</option>
+                @foreach (var setor in Model.SetoresDisponiveis)
+                {
+                    var selected = string.Equals(setor, Model.SetorSelecionado, System.StringComparison.OrdinalIgnoreCase) ? "selected" : null;
+                    <option value="@setor" selected="@selected">@setor</option>
+                }
+            </select>
+        </div>
         <button class="btn-primary" type="submit">Aplicar</button>
     </form>
 
     <div class="bg-white rounded shadow">
+        <div class="px-4 py-3 border-b border-slate-200 flex flex-wrap justify-between gap-2 text-sm text-slate-600">
+            <span>Período exibido: <strong>@Model.Inicio:dd/MM/yyyy</strong> até <strong>@Model.Fim:dd/MM/yyyy</strong></span>
+            <span>Exibindo @Model.Compromissos.Count compromisso(s)</span>
+        </div>
         <table class="table">
             <thead>
                 <tr>
                     <th>Título</th>
                     <th>Tipo</th>
+                    <th>Setor</th>
                     <th>Responsável</th>
                     <th>Início</th>
                     <th>Fim</th>
+                    <th>Conflitos</th>
                 </tr>
             </thead>
             <tbody>
                 @if (!Model.Compromissos.Any())
                 {
                     <tr>
-                        <td colspan="5" class="py-6 text-center text-slate-500">Nenhum compromisso no período informado.</td>
+                        <td colspan="7" class="py-6 text-center text-slate-500">Nenhum compromisso no período informado.</td>
                     </tr>
                 }
                 else
                 {
                     foreach (var item in Model.Compromissos)
                     {
-                        <tr>
+                        var rowClass = item.TemConflito ? "bg-red-50" : string.Empty;
+                        <tr class="@rowClass">
                             <td>@item.Titulo</td>
                             <td>@item.Tipo</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.Setor) ? "-" : item.Setor)</td>
                             <td>@item.Responsavel</td>
                             <td>@item.Inicio:dd/MM/yyyy HH:mm</td>
                             <td>@item.Fim:dd/MM/yyyy HH:mm</td>
+                            <td class="space-y-1">
+                                @if (item.TemConflito)
+                                {
+                                    foreach (var conflito in item.Conflitos)
+                                    {
+                                        <div class="flex flex-col text-sm">
+                                            <span class="font-medium text-red-700">@conflito.Escopo</span>
+                                            <span class="text-slate-600">@conflito.Titulo (@conflito.Inicio:dd/MM HH:mm - @conflito.Fim:dd/MM HH:mm)</span>
+                                            @if (!string.IsNullOrWhiteSpace(conflito.Responsavel))
+                                            {
+                                                <span class="text-slate-500">Responsável: @conflito.Responsavel</span>
+                                            }
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-slate-400">Sem conflitos</span>
+                                }
+                            </td>
                         </tr>
                     }
                 }

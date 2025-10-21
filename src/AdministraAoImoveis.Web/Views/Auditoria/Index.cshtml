@@ -1,0 +1,118 @@
+@model AuditLogListViewModel
+@{
+    ViewData["Title"] = "Auditoria";
+    string FormatDate(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    var exportParams = new
+    {
+        inicio = Model.Inicio.ToString("o"),
+        fim = Model.Fim.ToString("o"),
+        entidade = Model.Entidade,
+        usuario = Model.Usuario
+    };
+}
+
+<section class="space-y-4">
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <div>
+            <h2 class="text-2xl font-semibold text-slate-800">Logs de auditoria</h2>
+            <p class="text-sm text-slate-500">Consulte e exporte as operações registradas em cada módulo.</p>
+        </div>
+        <div class="space-x-2">
+            <a class="btn-secondary" asp-action="ExportarHtml" asp-all-route-data="exportParams">Exportar HTML</a>
+            <a class="btn-secondary" asp-action="ExportarCsv" asp-all-route-data="exportParams">Exportar CSV</a>
+        </div>
+    </header>
+
+    <form method="get" class="card space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+                <label class="label" for="inicio">Início</label>
+                <input class="input" id="inicio" type="datetime-local" name="inicio" value="@Model.Inicio.ToLocalTime().ToString("yyyy-MM-ddTHH:mm")" />
+            </div>
+            <div>
+                <label class="label" for="fim">Fim</label>
+                <input class="input" id="fim" type="datetime-local" name="fim" value="@Model.Fim.ToLocalTime().ToString("yyyy-MM-ddTHH:mm")" />
+            </div>
+            <div>
+                <label class="label" for="entidade">Entidade</label>
+                <select class="input" id="entidade" name="entidade">
+                    <option value="">Todas</option>
+                    @foreach (var item in Model.EntidadesDisponiveis)
+                    {
+                        <option value="@item" selected="@(string.Equals(Model.Entidade, item, StringComparison.OrdinalIgnoreCase))">@item</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="label" for="usuario">Usuário</label>
+                <input class="input" id="usuario" type="text" name="usuario" value="@Model.Usuario" placeholder="Qualquer" />
+            </div>
+        </div>
+        <div class="flex justify-end gap-2">
+            <a class="btn-secondary" asp-action="Index">Limpar</a>
+            <button type="submit" class="btn-primary">Filtrar</button>
+        </div>
+    </form>
+
+    <div class="card">
+        <header class="flex justify-between items-center mb-2">
+            <h3 class="text-lg font-semibold text-slate-800">@Model.Registros.Count registro(s)</h3>
+            <span class="text-xs text-slate-500">Período: @FormatDate(Model.Inicio) - @FormatDate(Model.Fim)</span>
+        </header>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Entidade</th>
+                        <th>Operação</th>
+                        <th>Usuário</th>
+                        <th>Origem</th>
+                        <th>Detalhes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Registros.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-sm text-slate-500">Nenhum evento encontrado para o período informado.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var registro in Model.Registros)
+                        {
+                            <tr>
+                                <td>@FormatDate(registro.RegistradoEm)</td>
+                                <td>@registro.Entidade</td>
+                                <td>@registro.Operacao</td>
+                                <td>@registro.Usuario</td>
+                                <td>
+                                    <div class="text-xs text-slate-600">
+                                        <div>IP: @registro.Ip</div>
+                                        <div>Host: @registro.Host</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <details>
+                                        <summary class="btn-link">Visualizar</summary>
+                                        <div class="text-xs text-slate-600 space-y-2 mt-2">
+                                            <div>
+                                                <strong>Antes:</strong>
+                                                <pre class="audit-json">@registro.Antes</pre>
+                                            </div>
+                                            <div>
+                                                <strong>Depois:</strong>
+                                                <pre class="audit-json">@registro.Depois</pre>
+                                            </div>
+                                        </div>
+                                    </details>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
