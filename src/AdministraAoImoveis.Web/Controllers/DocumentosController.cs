@@ -8,6 +8,7 @@ using AdministraAoImoveis.Web.Domain.Enumerations;
 using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Infrastructure.FileStorage;
 using AdministraAoImoveis.Web.Models;
+using AdministraAoImoveis.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,17 +22,20 @@ public class DocumentosController : Controller
     private readonly ApplicationDbContext _context;
     private readonly IFileStorageService _fileStorageService;
     private readonly ILogger<DocumentosController> _logger;
+    private readonly IAuditTrailService _auditTrailService;
 
     private const string StorageCategory = "property-documents";
 
     public DocumentosController(
         ApplicationDbContext context,
         IFileStorageService fileStorageService,
-        ILogger<DocumentosController> logger)
+        ILogger<DocumentosController> logger,
+        IAuditTrailService auditTrailService)
     {
         _context = context;
         _fileStorageService = fileStorageService;
         _logger = logger;
+        _auditTrailService = auditTrailService;
     }
 
     [HttpGet]
@@ -142,6 +146,9 @@ public class DocumentosController : Controller
         _context.PropertyDocuments.Add(novoDocumento);
         await _context.SaveChangesAsync(cancellationToken);
 
+        var depois = JsonSerializer.Serialize(novoDocumento);
+        await RegistrarAuditoriaDocumentoAsync(novoDocumento, "CREATE", string.Empty, depois, cancellationToken);
+
         _logger.LogInformation(
             "Documento {Descricao} v{Versao} cadastrado para o imóvel {ImovelId} por {Usuario}",
             novoDocumento.Descricao,
@@ -187,6 +194,7 @@ public class DocumentosController : Controller
 
         var user = User?.Identity?.Name ?? "Sistema";
         var agora = DateTime.UtcNow;
+        var antes = JsonSerializer.Serialize(documento);
 
         documento.Status = input.Aprovar ? DocumentStatus.Aprovado : DocumentStatus.Rejeitado;
         documento.RevisadoEm = agora;
@@ -205,6 +213,10 @@ public class DocumentosController : Controller
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        var depois = JsonSerializer.Serialize(documento);
+        var operacao = input.Aprovar ? "APPROVE" : "REJECT";
+        await RegistrarAuditoriaDocumentoAsync(documento, operacao, antes, depois, cancellationToken);
 
         _logger.LogInformation(
             "Documento {DocumentoId} revisado por {Usuario}. Status: {Status}",
@@ -253,6 +265,7 @@ public class DocumentosController : Controller
 
         var usuario = User?.Identity?.Name ?? "Sistema";
         var agora = DateTime.UtcNow;
+        var antesDocumento = JsonSerializer.Serialize(documento);
         var aceite = new PropertyDocumentAcceptance
         {
             DocumentoId = documento.Id,
@@ -271,6 +284,10 @@ public class DocumentosController : Controller
         documento.UpdatedBy = usuario;
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        var depoisDocumento = JsonSerializer.Serialize(documento);
+        await RegistrarAuditoriaDocumentoAsync(documento, "ACCEPTANCE_REGISTER", antesDocumento, depoisDocumento, cancellationToken);
+        await RegistrarAuditoriaAceiteAsync(aceite, "CREATE", cancellationToken);
 
         TempData["Success"] = "Aceite registrado com sucesso.";
         return RedirectToAction(nameof(Index), new { propertyId });
@@ -313,6 +330,7 @@ public class DocumentosController : Controller
         }
 
         var stream = await _fileStorageService.OpenAsync(documento.Arquivo, cancellationToken);
+        await RegistrarAuditoriaDocumentoAsync(documento, "DOWNLOAD", string.Empty, string.Empty, cancellationToken);
         _logger.LogInformation(
             "Arquivo {DocumentoId} do imóvel {ImovelId} enviado para download por {Usuario}",
             documento.Id,
@@ -468,6 +486,43 @@ public class DocumentosController : Controller
             Host = aceite.Host,
             RegistradoEm = aceite.RegistradoEm
         };
+    }
+
+    private async Task RegistrarAuditoriaDocumentoAsync(PropertyDocument documento, string operacao, string antes, string depois, CancellationToken cancellationToken)
+    {
+        var usuario = User?.Identity?.Name ?? "Sistema";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
+
+        await _auditTrailService.RegisterAsync(
+            "PropertyDocument",
+            documento.Id,
+            operacao,
+            antes ?? string.Empty,
+            depois ?? string.Empty,
+            usuario,
+            ip,
+            host,
+            cancellationToken);
+    }
+
+    private async Task RegistrarAuditoriaAceiteAsync(PropertyDocumentAcceptance aceite, string operacao, CancellationToken cancellationToken)
+    {
+        var usuario = User?.Identity?.Name ?? "Sistema";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
+        var payload = JsonSerializer.Serialize(aceite);
+
+        await _auditTrailService.RegisterAsync(
+            "PropertyDocumentAcceptance",
+            aceite.Id,
+            operacao,
+            string.Empty,
+            payload,
+            usuario,
+            ip,
+            host,
+            cancellationToken);
     }
 
     private string RenderTemplate(DocumentTemplateType tipo, Property property)
