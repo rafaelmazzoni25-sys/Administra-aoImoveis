@@ -1,0 +1,81 @@
+@model ContractGenerationViewModel
+@using System.Globalization
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Novo contrato";
+    var cultura = CultureInfo.GetCultureInfo("pt-BR");
+}
+
+<section class="space-y-6">
+    <header class="card space-y-2">
+        <h1 class="card-title">Gerar contrato</h1>
+        <p class="text-sm text-slate-500">Selecione a negociação e defina as informações financeiras para gerar o contrato inicial.</p>
+        <dl class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+            <div>
+                <dt class="font-semibold text-slate-600">Imóvel</dt>
+                <dd>@Model.PropertyCode - @Model.PropertyTitle</dd>
+            </div>
+            <div>
+                <dt class="font-semibold text-slate-600">Negociações disponíveis</dt>
+                <dd>@Model.Negotiations.Count</dd>
+            </div>
+            <div>
+                <dt class="font-semibold text-slate-600">Valor sugerido</dt>
+                <dd>
+                    @if (Model.Negotiations.FirstOrDefault(n => n.Id == Model.Input.NegotiationId) is { ValorProposta: { } proposta })
+                    {
+                        @proposta.Value.ToString("C", cultura)
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </dd>
+            </div>
+        </dl>
+    </header>
+
+    <section class="card">
+        <form method="post" class="space-y-6">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Input.PropertyId" />
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="input-label" asp-for="Input.NegotiationId"></label>
+                    <select class="input" asp-for="Input.NegotiationId" asp-items="@(new SelectList(Model.Negotiations, nameof(NegotiationOptionViewModel.Id), nameof(NegotiationOptionViewModel.Interessado), Model.Input.NegotiationId))"></select>
+                    <span class="text-xs text-red-600" asp-validation-for="Input.NegotiationId"></span>
+                </div>
+                <div>
+                    <label class="input-label" asp-for="Input.DataInicio"></label>
+                    <input class="input" asp-for="Input.DataInicio" type="date" />
+                    <span class="text-xs text-red-600" asp-validation-for="Input.DataInicio"></span>
+                </div>
+                <div>
+                    <label class="input-label" asp-for="Input.DataFim"></label>
+                    <input class="input" asp-for="Input.DataFim" type="date" />
+                    <span class="text-xs text-red-600" asp-validation-for="Input.DataFim"></span>
+                </div>
+                <div>
+                    <label class="input-label" asp-for="Input.ValorAluguel"></label>
+                    <input class="input" asp-for="Input.ValorAluguel" type="number" step="0.01" min="0" />
+                    <span class="text-xs text-red-600" asp-validation-for="Input.ValorAluguel"></span>
+                </div>
+                <div>
+                    <label class="input-label" asp-for="Input.Encargos"></label>
+                    <input class="input" asp-for="Input.Encargos" type="number" step="0.01" min="0" />
+                    <span class="text-xs text-red-600" asp-validation-for="Input.Encargos"></span>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <a class="btn-secondary" asp-controller="Imoveis" asp-action="Details" asp-route-id="@Model.PropertyId">Cancelar</a>
+                <button class="btn btn-primary" type="submit">Gerar contrato</button>
+            </div>
+        </form>
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

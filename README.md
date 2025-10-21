@@ -25,11 +25,11 @@ Esta solução contém a base do sistema web local solicitado, construída com A
    dotnet restore
    dotnet build
    ```
-2. Aplicação de banco (usando criação automática):
+2. Aplicação do banco (via migrações EF Core):
    ```bash
-   dotnet run --project src/AdministraAoImoveis.Web
+   dotnet ef database update --project src/AdministraAoImoveis.Web
    ```
-   O sistema cria o banco (EnsureCreated) e gera usuário `admin@local` (senha `Adm1n!234`).
+   Alternativamente, execute `dotnet run --project src/AdministraAoImoveis.Web` para aplicar as migrações automaticamente na inicialização. O sistema gera o usuário `admin@local` (senha `Adm1n!234`).
 3. (Opcional) Gerar CSS via Tailwind:
    ```bash
    cd src/AdministraAoImoveis.Web
@@ -40,7 +40,7 @@ Esta solução contém a base do sistema web local solicitado, construída com A
 ## Configuração
 
 - `appsettings.json` define a connection string e o diretório local para anexos.
-- Ajuste `FileStorage:BasePath` para a pasta desejada (ex.: `D:\Imobiliaria\Arquivos`).
+- Ajuste `FileStorage:BasePath` para a pasta desejada. Valores relativos são resolvidos a partir do `ContentRootPath` da aplicação e podem ser configurados também via variável de ambiente (`FileStorage__BasePath`).
 - Logs de auditoria são gravados em `logs/audit-AAAAMMDD.log` dentro do diretório da aplicação.
 
 ## Próximos Passos

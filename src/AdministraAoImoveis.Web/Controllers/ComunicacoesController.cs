@@ -380,7 +380,7 @@ public class ComunicacoesController : Controller
                     ContextoId = contextoId,
                     Titulo = contrato.Ativo ? "Contrato ativo" : "Contrato encerrado",
                     Descricao = descricao,
-                    LinkDestino = Url.Action("Details", "Imoveis", new { id = contrato.ImovelId })
+                    LinkDestino = Url.Action("Details", "Contratos", new { id = contrato.Id })
                 };
             }
             case ActivityLinkType.Atividade:

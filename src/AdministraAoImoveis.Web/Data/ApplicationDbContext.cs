@@ -52,6 +52,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Property>()
+            .HasMany(p => p.Contratos)
+            .WithOne(c => c.Imovel)
+            .HasForeignKey(c => c.ImovelId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<Property>()
+            .HasOne(p => p.ContratoAtivo)
+            .WithMany()
+            .HasForeignKey(p => p.ContratoAtivoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<Property>()
             .HasMany(p => p.Vistorias)
             .WithOne(v => v.Imovel)
             .HasForeignKey(v => v.ImovelId)
@@ -80,6 +92,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithOne(n => n.Interessado)
             .HasForeignKey(n => n.InteressadoId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Contract>()
+            .HasOne(c => c.Negociacao)
+            .WithMany(n => n.Contratos)
+            .HasForeignKey(c => c.NegociacaoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Contract>()
+            .HasOne(c => c.DocumentoContrato)
+            .WithMany()
+            .HasForeignKey(c => c.DocumentoContratoId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.Entity<Activity>()
             .HasMany(a => a.Comentarios)

@@ -9,6 +9,7 @@ using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Infrastructure.FileStorage;
 using AdministraAoImoveis.Web.Models;
 using AdministraAoImoveis.Web.Services;
+using AdministraAoImoveis.Web.Services.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -529,64 +530,10 @@ public class DocumentosController : Controller
     {
         return tipo switch
         {
-            DocumentTemplateType.ContratoLocacao => RenderContractTemplate(property),
+            DocumentTemplateType.ContratoLocacao => ContractTemplateRenderer.Render(property),
             DocumentTemplateType.LaudoVistoria => RenderInspectionTemplate(property),
             _ => throw new ArgumentOutOfRangeException(nameof(tipo), tipo, null)
         };
-    }
-
-    private static string RenderContractTemplate(Property property)
-    {
-        var cultura = CultureInfo.GetCultureInfo("pt-BR");
-        var proprietario = property.Proprietario;
-        var negotiation = property.Negociacoes
-            .OrderByDescending(n => n.CreatedAt)
-            .FirstOrDefault();
-
-        var interessado = negotiation?.Interessado;
-        var valorAluguel = negotiation?.ValorProposta.HasValue == true
-            ? negotiation!.ValorProposta.Value.ToString("C", cultura)
-            : "________";
-        var valorSinal = negotiation?.ValorSinal.HasValue == true
-            ? negotiation!.ValorSinal.Value.ToString("C", cultura)
-            : "________";
-
-        var sb = new StringBuilder();
-        sb.AppendLine("<html><head><meta charset=\"utf-8\" /><title>Contrato de Locação</title></head><body>");
-        sb.AppendLine($"<h1>Contrato de Locação - {WebUtility.HtmlEncode(property.CodigoInterno)}</h1>");
-        sb.AppendLine($"<p>Gerado em {DateTime.UtcNow.ToLocalTime():dd/MM/yyyy HH:mm}</p>");
-        sb.AppendLine("<section>");
-        sb.AppendLine("<h2>Proprietário</h2>");
-        sb.AppendLine($"<p>{WebUtility.HtmlEncode(proprietario?.Nome ?? "Nome do proprietário")} - Documento: {WebUtility.HtmlEncode(proprietario?.Documento ?? "___________")}</p>");
-        sb.AppendLine("</section>");
-
-        sb.AppendLine("<section>");
-        sb.AppendLine("<h2>Interessado</h2>");
-        sb.AppendLine($"<p>{WebUtility.HtmlEncode(interessado?.Nome ?? "Interessado")} - Documento: {WebUtility.HtmlEncode(interessado?.Documento ?? "___________")}</p>");
-        sb.AppendLine("</section>");
-
-        sb.AppendLine("<section>");
-        sb.AppendLine("<h2>Imóvel</h2>");
-        sb.AppendLine($"<p><strong>Endereço:</strong> {WebUtility.HtmlEncode(property.Endereco)} - {WebUtility.HtmlEncode(property.Bairro)} - {WebUtility.HtmlEncode(property.Cidade)}/{WebUtility.HtmlEncode(property.Estado)}</p>");
-        sb.AppendLine($"<p><strong>Características:</strong> Área {property.Area} m², {property.Quartos} quarto(s), {property.Banheiros} banheiro(s), {property.Vagas} vaga(s).</p>");
-        sb.AppendLine("</section>");
-
-        sb.AppendLine("<section>");
-        sb.AppendLine("<h2>Cláusulas financeiras</h2>");
-        sb.AppendLine($"<p><strong>Valor do aluguel:</strong> {valorAluguel}</p>");
-        sb.AppendLine($"<p><strong>Valor do sinal/caução:</strong> {valorSinal}</p>");
-        sb.AppendLine($"<p><strong>Data prevista de início:</strong> {(negotiation?.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy", cultura) ?? "____/____/____")}</p>");
-        sb.AppendLine("</section>");
-
-        sb.AppendLine("<section>");
-        sb.AppendLine("<h2>Aceites presenciais</h2>");
-        sb.AppendLine("<p>Espaço reservado para assinaturas físicas das partes envolvidas.</p>");
-        sb.AppendLine("<p>__________________________________________</p>");
-        sb.AppendLine("<p>__________________________________________</p>");
-        sb.AppendLine("</section>");
-
-        sb.AppendLine("</body></html>");
-        return sb.ToString();
     }
 
     private static string RenderInspectionTemplate(Property property)

@@ -24,6 +24,7 @@ public class Property : BaseEntity
     public Contract? ContratoAtivo { get; set; }
     public ICollection<PropertyHistoryEvent> Historico { get; set; } = new List<PropertyHistoryEvent>();
     public ICollection<Negotiation> Negociacoes { get; set; } = new List<Negotiation>();
+    public ICollection<Contract> Contratos { get; set; } = new List<Contract>();
     public ICollection<Inspection> Vistorias { get; set; } = new List<Inspection>();
     public ICollection<Activity> Atividades { get; set; } = new List<Activity>();
     public ICollection<MaintenanceOrder> Manutencoes { get; set; } = new List<MaintenanceOrder>();

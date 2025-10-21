@@ -12,6 +12,7 @@ public static class RoleNames
     public const string Interessado = "INTERESSADO";
 
     public const string GestaoImoveis = Admin + "," + Comercial + "," + Juridico;
+    public const string GestaoContratos = Admin + "," + Juridico + "," + Comercial;
     public const string Operacional = Admin + "," + Comercial + "," + Vistoria + "," + Manutencao + "," + Financeiro + "," + Juridico;
     public const string AgendaSetores = Admin + "," + Comercial + "," + Vistoria + "," + Manutencao + "," + Financeiro;
     public const string FinanceiroEquipe = Admin + "," + Financeiro;

@@ -222,6 +222,9 @@ public class ImoveisController : Controller
                 .ThenInclude(n => n.Eventos)
             .Include(p => p.Negociacoes)
                 .ThenInclude(n => n.Interessado)
+            .Include(p => p.Contratos)
+                .ThenInclude(c => c.Negociacao)
+                    .ThenInclude(n => n.Interessado)
             .Include(p => p.Vistorias)
             .Include(p => p.Atividades)
             .Include(p => p.Historico)
@@ -260,6 +263,23 @@ public class ImoveisController : Controller
             .OrderBy(d => d.Descricao)
             .ToList();
 
+        var contratosResumo = property.Contratos
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new ContractSummaryViewModel
+            {
+                Id = c.Id,
+                PropertyId = property.Id,
+                PropertyCode = property.CodigoInterno,
+                PropertyTitle = property.Titulo,
+                Interessado = c.Negociacao?.Interessado?.Nome ?? string.Empty,
+                Ativo = c.Ativo,
+                DataInicio = c.DataInicio,
+                DataFim = c.DataFim,
+                ValorAluguel = c.ValorAluguel,
+                Encargos = c.Encargos
+            })
+            .ToList();
+
         var model = new PropertyDetailViewModel
         {
             Id = property.Id,
@@ -296,7 +316,9 @@ public class ImoveisController : Controller
                     PrevisaoConclusao = m.PrevisaoConclusao,
                     EmExecucao = m.Status == MaintenanceOrderStatus.EmExecucao
                 })
-                .ToList()
+                .ToList(),
+            Contratos = contratosResumo,
+            ContratoAtivo = contratosResumo.FirstOrDefault(c => c.Ativo)
         };
 
         return View(model);

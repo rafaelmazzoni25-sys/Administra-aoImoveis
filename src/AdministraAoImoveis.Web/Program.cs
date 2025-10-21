@@ -3,6 +3,7 @@ using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Infrastructure.FileStorage;
 using AdministraAoImoveis.Web.Infrastructure.Logging;
 using AdministraAoImoveis.Web.Services;
+using AdministraAoImoveis.Web.Services.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,6 +41,7 @@ builder.Services.AddRazorPages();
 
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IAuditTrailService, AuditTrailService>();
+builder.Services.AddScoped<IContractService, ContractService>();
 
 var app = builder.Build();
 
@@ -47,7 +49,7 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureCreated();
+    await context.Database.MigrateAsync();
     await ApplicationDbInitializer.SeedAsync(services);
 }
 

@@ -70,6 +70,65 @@
 
     <section class="card space-y-3">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <h3 class="card-title">Contratos</h3>
+            <div class="flex flex-wrap gap-2">
+                @if (Model.ContratoAtivo is not null)
+                {
+                    <a class="btn-secondary" asp-controller="Contratos" asp-action="Details" asp-route-id="@Model.ContratoAtivo.Id">Contrato ativo</a>
+                }
+                <a class="btn-secondary" asp-controller="Contratos" asp-action="Create" asp-route-propertyId="@Model.Id">Gerar contrato</a>
+            </div>
+        </div>
+        @if (!Model.Contratos.Any())
+        {
+            <p class="empty-state">Nenhum contrato cadastrado para este imóvel.</p>
+        }
+        else
+        {
+            <table class="table text-sm">
+                <thead>
+                    <tr>
+                        <th>Interessado</th>
+                        <th>Vigência</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var contrato in Model.Contratos)
+                    {
+                        var inicio = contrato.DataInicio.ToString("dd/MM/yyyy");
+                        var fim = contrato.DataFim?.ToString("dd/MM/yyyy") ?? "--";
+                        <tr>
+                            <td>@(string.IsNullOrWhiteSpace(contrato.Interessado) ? "—" : contrato.Interessado)</td>
+                            <td>@inicio - @fim</td>
+                            <td>
+                                <span class="block">@contrato.ValorAluguel.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                                <span class="block text-xs text-slate-500">Encargos: @contrato.Encargos.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
+                            </td>
+                            <td>
+                                @if (contrato.Ativo)
+                                {
+                                    <span class="badge-success">Ativo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-muted">Encerrado</span>
+                                }
+                            </td>
+                            <td class="text-right">
+                                <a class="link" asp-controller="Contratos" asp-action="Details" asp-route-id="@contrato.Id">Detalhes</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="card space-y-3">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <h3 class="card-title">Documentos</h3>
             <a class="btn-secondary" asp-controller="Documentos" asp-action="Index" asp-route-propertyId="@Model.Id">Gerenciar documentos</a>
         </div>
