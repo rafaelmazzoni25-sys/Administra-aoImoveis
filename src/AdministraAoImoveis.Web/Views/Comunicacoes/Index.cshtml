@@ -1,0 +1,131 @@
+@model ContextConversationViewModel
+@using AdministraAoImoveis.Web.Domain.Enumerations
+@{
+    ViewData["Title"] = "Comunicações";
+}
+
+<section class="space-y-6">
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <div>
+            <h2 class="text-2xl font-semibold text-slate-800">Comunicação interna</h2>
+            <p class="text-sm text-slate-500">Centralize conversas por contexto e mantenha o registro auditável.</p>
+        </div>
+        <a class="btn-secondary" asp-controller="Notificacoes" asp-action="Index">Ver notificações</a>
+    </header>
+
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success">@success</div>
+    }
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <aside class="lg:col-span-1 space-y-4">
+            <div class="card">
+                <h3 class="card-title">Contextos recentes</h3>
+                @if (!Model.Recentes.Any())
+                {
+                    <p class="text-sm text-slate-500">Nenhuma conversa registrada até o momento.</p>
+                }
+                else
+                {
+                    <ul class="space-y-2">
+                        @foreach (var contexto in Model.Recentes)
+                        {
+                            <li>
+                                <a class="recent-context" asp-action="Index" asp-route-contextoTipo="@contexto.ContextoTipo" asp-route-contextoId="@contexto.ContextoId">
+                                    <span class="recent-context-title">@contexto.Titulo</span>
+                                    @if (!string.IsNullOrWhiteSpace(contexto.Descricao))
+                                    {
+                                        <span class="recent-context-description">@contexto.Descricao</span>
+                                    }
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+            <div class="card text-sm text-slate-600 space-y-2">
+                <h3 class="card-title">Dicas de uso</h3>
+                <p>Use <strong>@&lt;usuario&gt;</strong> para mencionar colegas e gerar notificações internas.</p>
+                <p>Todo envio é registrado na auditoria com data, hora e usuário responsável.</p>
+                <p>Conversem sempre no contexto correto (imóvel, negociação, vistoria, contrato ou atividade) para manter o histórico organizado.</p>
+            </div>
+        </aside>
+
+        <div class="lg:col-span-2">
+            @if (Model.Contexto is null)
+            {
+                <div class="card empty-conversation">
+                    <h3 class="card-title">Selecione um contexto</h3>
+                    <p class="text-sm text-slate-600">Escolha um item na lista ao lado ou navegue até a área desejada e clique em "Comunicações".</p>
+                </div>
+            }
+            else
+            {
+                <article class="card space-y-6">
+                    <header class="conversation-header">
+                        <div>
+                            <h3 class="text-xl font-semibold text-slate-800">@Model.Contexto.Titulo</h3>
+                            @if (!string.IsNullOrWhiteSpace(Model.Contexto.Descricao))
+                            {
+                                <p class="text-sm text-slate-500">@Model.Contexto.Descricao</p>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.Contexto.LinkDestino))
+                        {
+                            <a class="btn-secondary" href="@Model.Contexto.LinkDestino">Abrir contexto</a>
+                        }
+                    </header>
+
+                    <section class="conversation-body">
+                        @if (!Model.Mensagens.Any())
+                        {
+                            <p class="text-sm text-slate-500">Nenhuma mensagem registrada para este contexto.</p>
+                        }
+                        else
+                        {
+                            <ul class="conversation-timeline">
+                                @foreach (var mensagem in Model.Mensagens)
+                                {
+                                    <li class="conversation-entry @(mensagem.DoUsuarioAtual ? "conversation-entry-own" : string.Empty)">
+                                        <header>
+                                            <span class="author">@mensagem.Autor</span>
+                                            <time datetime="@mensagem.EnviadaEm.ToString("O")">@mensagem.EnviadaEm:dd/MM/yyyy HH:mm</time>
+                                        </header>
+                                        <p class="message-content">@mensagem.Mensagem</p>
+                                        @if (mensagem.Mentions.Any())
+                                        {
+                                            <footer>
+                                                <span class="mentions">Menções: @string.Join(", ", mensagem.Mentions)</span>
+                                            </footer>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </section>
+
+                    <section>
+                        <form asp-action="PostMessage" method="post" class="space-y-4">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" asp-for="NovaMensagem.ContextoTipo" value="@Model.Contexto.ContextoTipo" />
+                            <input type="hidden" asp-for="NovaMensagem.ContextoId" value="@Model.Contexto.ContextoId" />
+                            <div>
+                                <label class="input-label" asp-for="NovaMensagem.Mensagem">Nova mensagem</label>
+                                <textarea class="input h-32" asp-for="NovaMensagem.Mensagem"></textarea>
+                                <span asp-validation-for="NovaMensagem.Mensagem" class="text-sm text-red-600"></span>
+                            </div>
+                            <div class="flex justify-end">
+                                <button class="btn btn-primary" type="submit">Enviar mensagem</button>
+                            </div>
+                        </form>
+                    </section>
+                </article>
+            }
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

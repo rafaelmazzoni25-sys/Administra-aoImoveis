@@ -1,4 +1,5 @@
 @model IndicatorsViewModel
+@using System.Linq
 @{
     ViewData["Title"] = "Indicadores";
 }
@@ -30,6 +31,117 @@
         <div class="card">
             <div class="card-title">Custos de manutenção</div>
             <div class="card-value">@Model.CustoManutencaoPeriodo.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Tempo médio de manutenção</div>
+            <div class="card-value">@Model.TempoMedioManutencaoDias.ToString("N1") dias</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Pendências críticas abertas</div>
+            <div class="card-value">@Model.PendenciasCriticasAbertas</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Financeiro pendente</div>
+            <div class="card-value">@Model.FinanceiroPendente.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Financeiro recebido</div>
+            <div class="card-value">@Model.FinanceiroRecebido.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card">
+            <h3 class="card-title">Tempo médio por etapa</h3>
+            <table class="table text-sm">
+                <thead>
+                    <tr>
+                        <th>Etapa</th>
+                        <th>Tempo médio (dias)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.TempoMedioPorEtapa)
+                    {
+                        <tr>
+                            <td>@item.Key</td>
+                            <td>@item.Value.ToString("N1")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card">
+            <h3 class="card-title">Conversão por responsável</h3>
+            <table class="table text-sm">
+                <thead>
+                    <tr>
+                        <th>Responsável</th>
+                        <th>Negociações concluídas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.ConversaoPorResponsavel.Any())
+                    {
+                        <tr><td colspan="2" class="text-center text-slate-500 py-3">Nenhuma conversão registrada no período.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var conversao in Model.ConversaoPorResponsavel)
+                        {
+                            <tr>
+                                <td>@conversao.Key</td>
+                                <td>@conversao.Value</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card">
+            <h3 class="card-title">Pipeline de negociações</h3>
+            @{ var totalNegociacoes = Model.NegociacoesPorEtapa.Sum(n => n.Value); }
+            @if (totalNegociacoes == 0)
+            {
+                <p class="text-sm text-slate-500">Não há negociações ativas no momento.</p>
+            }
+            else
+            {
+                <ul class="chart-list">
+                    @foreach (var etapa in Model.NegociacoesPorEtapa.OrderBy(k => k.Key))
+                    {
+                        var percentual = totalNegociacoes == 0 ? 0 : (double)etapa.Value / totalNegociacoes * 100;
+                        <li class="chart-item">
+                            <span class="chart-label">@etapa.Key (@etapa.Value)</span>
+                            <div class="chart-bar" style="--chart-value:@percentual%;" data-value="@percentual.ToString("N1")%"></div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+        <div class="card">
+            <h3 class="card-title">Pendências por setor</h3>
+            @{ var totalPendencias = Model.PendenciasPorSetor.Sum(p => p.Value); }
+            @if (totalPendencias == 0)
+            {
+                <p class="text-sm text-slate-500">Nenhuma pendência aberta nos setores.</p>
+            }
+            else
+            {
+                <ul class="chart-list">
+                    @foreach (var setor in Model.PendenciasPorSetor.OrderByDescending(p => p.Value))
+                    {
+                        var percentual = totalPendencias == 0 ? 0 : (double)setor.Value / totalPendencias * 100;
+                        <li class="chart-item">
+                            <span class="chart-label">@setor.Key (@setor.Value)</span>
+                            <div class="chart-bar chart-bar-warning" style="--chart-value:@percentual%;" data-value="@percentual.ToString("N1")%"></div>
+                        </li>
+                    }
+                </ul>
+            }
         </div>
     </div>
 </section>

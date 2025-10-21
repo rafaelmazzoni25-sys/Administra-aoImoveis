@@ -1,0 +1,201 @@
+@model FinancialTransactionListViewModel
+@using AdministraAoImoveis.Web.Domain.Enumerations
+@{
+    ViewData["Title"] = "Financeiro da negociação";
+}
+
+<section class="space-y-6">
+    @if (TempData["Error"] is string errorMessage)
+    {
+        <div class="alert alert-error">@errorMessage</div>
+    }
+    @if (TempData["Success"] is string successMessage)
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
+    <header class="card space-y-3">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+            <div>
+                <h2 class="card-title">Fluxo financeiro da negociação</h2>
+                <p class="text-sm text-slate-500">Imóvel: <strong>@Model.Imovel</strong></p>
+                <p class="text-sm text-slate-500">Interessado: <strong>@Model.Interessado</strong></p>
+            </div>
+            <div class="text-right text-sm">
+                <p>Status da negociação: <strong>@Model.Etapa</strong></p>
+                <p class="text-xs text-slate-500">@(Model.NegociacaoAtiva ? "Negociação ativa" : "Negociação encerrada")</p>
+                <a class="btn-secondary mt-2 inline-flex items-center justify-center" asp-controller="Negociacoes" asp-action="Index">Voltar para o quadro</a>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 text-sm">
+            <div class="rounded-lg bg-slate-50 p-4">
+                <p class="uppercase text-xs tracking-wide text-slate-500">Previsto</p>
+                <p class="card-value">@Model.TotalPrevisto.ToString("C")</p>
+            </div>
+            <div class="rounded-lg bg-slate-50 p-4">
+                <p class="uppercase text-xs tracking-wide text-slate-500">Recebido</p>
+                <p class="card-value text-emerald-600">@Model.TotalRecebido.ToString("C")</p>
+            </div>
+            <div class="rounded-lg bg-slate-50 p-4">
+                <p class="uppercase text-xs tracking-wide text-slate-500">Devolvido</p>
+                <p class="card-value text-amber-600">@Model.TotalDevolvido.ToString("C")</p>
+            </div>
+            <div class="rounded-lg bg-slate-50 p-4">
+                <p class="uppercase text-xs tracking-wide text-slate-500">Pendente</p>
+                <p class="card-value text-red-600">@Model.TotalPendente.ToString("C")</p>
+            </div>
+        </div>
+    </header>
+
+    <section class="card space-y-4">
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+                <h3 class="card-title">Agendar novo lançamento</h3>
+                <p class="text-xs text-slate-500">Controle os recebimentos de sinal, cauções e parcelas vinculadas à negociação.</p>
+            </div>
+        </header>
+        <form asp-action="Criar" asp-route-negotiationId="@Model.NegociacaoId" method="post" class="space-y-4">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-xs text-red-600"></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label" asp-for="NovoLancamento.TipoLancamento"></label>
+                    <input class="input" asp-for="NovoLancamento.TipoLancamento" />
+                    <span class="text-xs text-red-600" asp-validation-for="NovoLancamento.TipoLancamento"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="NovoLancamento.Valor"></label>
+                    <input class="input" asp-for="NovoLancamento.Valor" type="number" step="0.01" min="0.01" />
+                    <span class="text-xs text-red-600" asp-validation-for="NovoLancamento.Valor"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="NovoLancamento.DataPrevista"></label>
+                    <input class="input" asp-for="NovoLancamento.DataPrevista" type="date" />
+                    <span class="text-xs text-red-600" asp-validation-for="NovoLancamento.DataPrevista"></span>
+                </div>
+                <div>
+                    <label class="label" asp-for="NovoLancamento.Observacao"></label>
+                    <textarea class="input" asp-for="NovoLancamento.Observacao" rows="3"></textarea>
+                    <span class="text-xs text-red-600" asp-validation-for="NovoLancamento.Observacao"></span>
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="btn-primary">Salvar lançamento</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card space-y-3">
+        <h3 class="card-title">Histórico de lançamentos</h3>
+        @if (!Model.Lancamentos.Any())
+        {
+            <p class="empty-state">Nenhum lançamento cadastrado.</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Previsto</th>
+                            <th>Efetivação</th>
+                            <th>Observações</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @for (var i = 0; i < Model.Lancamentos.Count; i++)
+                    {
+                        var item = Model.Lancamentos[i];
+                        <tr>
+                            <td>
+                                <strong>@item.TipoLancamento</strong>
+                                <p class="text-xs text-slate-500">Criado em @item.CriadoEm:dd/MM/yyyy por @item.CriadoPor</p>
+                                @if (item.AtualizadoEm.HasValue)
+                                {
+                                    <p class="text-[11px] text-slate-500">Última atualização em @item.AtualizadoEm:dd/MM/yyyy HH:mm por @item.AtualizadoPor</p>
+                                }
+                            </td>
+                            <td>@item.Valor.ToString("C")</td>
+                            <td>
+                                <span class="inline-flex px-2 py-1 rounded-full text-xs font-semibold @(item.Status switch
+                                {
+                                    FinancialStatus.Recebido => "bg-emerald-100 text-emerald-700",
+                                    FinancialStatus.Pendente => "bg-amber-100 text-amber-700",
+                                    FinancialStatus.Devolvido => "bg-orange-100 text-orange-600",
+                                    FinancialStatus.Cancelado => "bg-slate-100 text-slate-600",
+                                    _ => "bg-slate-100 text-slate-600"
+                                })">@item.Status</span>
+                            </td>
+                            <td>@(item.DataPrevista?.ToString("dd/MM/yyyy") ?? "-")</td>
+                            <td>@(item.DataEfetivacao?.ToString("dd/MM/yyyy") ?? "-")</td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(item.Observacao))
+                                {
+                                    <div class="text-xs whitespace-pre-line">@item.Observacao</div>
+                                }
+                                else
+                                {
+                                    <span class="text-xs text-slate-400">Sem observações</span>
+                                }
+                            </td>
+                            <td class="align-top">
+                                @if (!item.TransicoesPermitidas.Any())
+                                {
+                                    <span class="text-xs text-slate-400">Sem ações disponíveis</span>
+                                }
+                                else
+                                {
+                                    <form asp-action="Atualizar" asp-route-negotiationId="@Model.NegociacaoId" asp-route-transactionId="@item.Id" method="post" class="space-y-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="LancamentoId" value="@item.Atualizacao.LancamentoId" />
+                                        <div>
+                                            <label class="label" for="status-@i">Novo status</label>
+                                            <select id="status-@i" name="NovoStatus" class="input">
+                                                @foreach (var status in item.TransicoesPermitidas)
+                                                {
+                                                    var selectedAttribute = status == item.Atualizacao.NovoStatus
+                                                        ? "selected=\"selected\""
+                                                        : string.Empty;
+                                                    <option value="@status" @Html.Raw(selectedAttribute)>@status</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="label" for="efetivacao-@i">Data de efetivação</label>
+                                            <input id="efetivacao-@i" name="DataEfetivacao" type="date" class="input" value="@(item.Atualizacao.DataEfetivacao?.ToString("yyyy-MM-dd") ?? string.Empty)" />
+                                        </div>
+                                        <div>
+                                            <label class="label" for="justificativa-@i">Justificativa</label>
+                                            <textarea id="justificativa-@i" name="Justificativa" rows="2" class="input">@item.Atualizacao.Justificativa</textarea>
+                                        </div>
+                                        @if (item.ErrosAtualizacao.Any())
+                                        {
+                                            <ul class="text-xs text-red-600 space-y-1">
+                                            @foreach (var erro in item.ErrosAtualizacao)
+                                            {
+                                                <li>@erro</li>
+                                            }
+                                            </ul>
+                                        }
+                                        <div class="flex justify-end">
+                                            <button type="submit" class="btn-secondary">Atualizar status</button>
+                                        </div>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
