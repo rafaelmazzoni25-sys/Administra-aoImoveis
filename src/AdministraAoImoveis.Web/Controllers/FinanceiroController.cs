@@ -1,6 +1,7 @@
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
+using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.FinanceiroEquipe)]
 [Route("Negociacoes/{negotiationId:guid}/Financeiro")]
 public class FinanceiroController : Controller
 {

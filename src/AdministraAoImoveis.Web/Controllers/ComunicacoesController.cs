@@ -13,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.Operacional)]
 public class ComunicacoesController : Controller
 {
     private static readonly Regex MentionRegex = new("@([\\w\\.\\-]+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);

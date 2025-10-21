@@ -12,8 +12,10 @@ public class ApplicantPortalViewModel
     public IReadOnlyCollection<PortalMessageViewModel> MensagensRecentes { get; set; } = Array.Empty<PortalMessageViewModel>();
     public ApplicantPortalMessageInputModel NovaMensagem { get; set; } = new();
     public ApplicantDocumentUploadInputModel Upload { get; set; } = new();
+    public ApplicantVisitScheduleInputModel AgendamentoVisita { get; set; } = new();
     public bool PodeEnviarMensagem => Negociacoes.Any();
     public bool PodeEnviarDocumentos => Negociacoes.Any();
+    public bool PodeAgendarVisita => Negociacoes.Any(n => n.Ativa);
 }
 
 public class ApplicantNegotiationViewModel
@@ -78,4 +80,17 @@ public class ApplicantDocumentUploadInputModel
 
     [Required(ErrorMessage = "Selecione o arquivo a ser enviado.")]
     public IFormFile? Arquivo { get; set; }
+}
+
+public class ApplicantVisitScheduleInputModel
+{
+    [Required(ErrorMessage = "Selecione a negociação desejada.")]
+    public Guid? NegociacaoId { get; set; }
+
+    [Required(ErrorMessage = "Informe a data e hora da visita.")]
+    [DataType(DataType.DateTime)]
+    public DateTime? DataHora { get; set; }
+
+    [StringLength(512)]
+    public string? Observacoes { get; set; }
 }

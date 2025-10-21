@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
@@ -61,7 +62,7 @@ public class HomeController : Controller
 
         if (!ModelState.IsValid)
         {
-            var invalidModel = await BuildDashboardAsync(userId, cancellationToken, input);
+            var invalidModel = await BuildDashboardAsync(userId, cancellationToken, mensagem: input);
             return View("Index", invalidModel ?? new ApplicantPortalViewModel());
         }
 
@@ -72,14 +73,11 @@ public class HomeController : Controller
         if (negotiation is null)
         {
             ModelState.AddModelError(nameof(ApplicantPortalMessageInputModel.NegociacaoId), "Negociação não encontrada.");
-            var invalidModel = await BuildDashboardAsync(userId, cancellationToken, input);
+            var invalidModel = await BuildDashboardAsync(userId, cancellationToken, mensagem: input);
             return View("Index", invalidModel ?? new ApplicantPortalViewModel());
         }
 
-        var usuario = await _userManager.GetUserAsync(User);
-        var autor = string.IsNullOrWhiteSpace(usuario?.NomeCompleto)
-            ? usuario?.UserName ?? usuario?.Email ?? "Portal"
-            : usuario!.NomeCompleto;
+        var autor = await GetCurrentUserDisplayNameAsync();
 
         var mensagem = new ContextMessage
         {
@@ -141,10 +139,7 @@ public class HomeController : Controller
         }
 
         var categoria = input.Categoria.Trim();
-        var usuario = await _userManager.GetUserAsync(User);
-        var autor = string.IsNullOrWhiteSpace(usuario?.NomeCompleto)
-            ? usuario?.UserName ?? usuario?.Email ?? "Portal"
-            : usuario!.NomeCompleto;
+        var autor = await GetCurrentUserDisplayNameAsync();
 
         await using var content = input.Arquivo.OpenReadStream();
         var storedFile = await _fileStorageService.SaveAsync(
@@ -190,6 +185,118 @@ public class HomeController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AgendarVisita(ApplicantVisitScheduleInputModel input, CancellationToken cancellationToken)
+    {
+        var userId = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Challenge();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var invalidModel = await BuildDashboardAsync(userId, cancellationToken, agendamento: input);
+            return View("Index", invalidModel ?? new ApplicantPortalViewModel());
+        }
+
+        var negotiation = await _context.Negociacoes
+            .Include(n => n.Interessado)
+            .Include(n => n.Imovel)
+            .FirstOrDefaultAsync(n => n.Id == input.NegociacaoId && n.Interessado != null && n.Interessado.UsuarioId == userId, cancellationToken);
+
+        if (negotiation is null)
+        {
+            ModelState.AddModelError(nameof(ApplicantVisitScheduleInputModel.NegociacaoId), "Negociação não encontrada.");
+            var invalidModel = await BuildDashboardAsync(userId, cancellationToken, agendamento: input);
+            return View("Index", invalidModel ?? new ApplicantPortalViewModel());
+        }
+
+        var dataHora = input.DataHora!.Value;
+        if (dataHora.Kind == DateTimeKind.Unspecified)
+        {
+            dataHora = DateTime.SpecifyKind(dataHora, DateTimeKind.Local);
+        }
+
+        var inicio = dataHora.Kind == DateTimeKind.Utc ? dataHora : dataHora.ToUniversalTime();
+        if (inicio < DateTime.UtcNow)
+        {
+            ModelState.AddModelError(nameof(ApplicantVisitScheduleInputModel.DataHora), "Escolha uma data futura para a visita.");
+        }
+
+        var fim = inicio.AddHours(1);
+        var responsavel = negotiation.CreatedBy?.Trim();
+
+        var conflitos = await _context.Agenda
+            .Where(e => e.Inicio < fim && e.Fim > inicio)
+            .Where(e => e.ImovelId == negotiation.ImovelId || (!string.IsNullOrWhiteSpace(responsavel) && string.Equals(e.Responsavel, responsavel, StringComparison.OrdinalIgnoreCase)))
+            .ToListAsync(cancellationToken);
+
+        if (conflitos.Any(e => e.ImovelId == negotiation.ImovelId))
+        {
+            ModelState.AddModelError(nameof(ApplicantVisitScheduleInputModel.DataHora), "Já existe compromisso para este imóvel no horário selecionado.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(responsavel) && conflitos.Any(e => string.Equals(e.Responsavel, responsavel, StringComparison.OrdinalIgnoreCase)))
+        {
+            ModelState.AddModelError(nameof(ApplicantVisitScheduleInputModel.DataHora), "O responsável pela negociação já possui outro compromisso neste horário.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var invalidModel = await BuildDashboardAsync(userId, cancellationToken, agendamento: input);
+            return View("Index", invalidModel ?? new ApplicantPortalViewModel());
+        }
+
+        var solicitante = await GetCurrentUserDisplayNameAsync();
+        var observacoes = input.Observacoes?.Trim() ?? string.Empty;
+
+        var agendaEntry = new ScheduleEntry
+        {
+            Titulo = $"Visita - {negotiation.Imovel?.CodigoInterno ?? "Imóvel"}",
+            Tipo = "Visita",
+            Setor = "Comercial",
+            Inicio = inicio,
+            Fim = fim,
+            Responsavel = responsavel ?? string.Empty,
+            ImovelId = negotiation.ImovelId,
+            NegociacaoId = negotiation.Id,
+            Observacoes = observacoes,
+            CreatedBy = solicitante,
+            UpdatedBy = solicitante,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Agenda.Add(agendaEntry);
+
+        var evento = new NegotiationEvent
+        {
+            NegociacaoId = negotiation.Id,
+            Titulo = "Visita agendada pelo interessado",
+            Descricao = $"Visita marcada para {inicio.ToLocalTime():dd/MM/yyyy HH:mm}.",
+            Responsavel = solicitante,
+            OcorridoEm = DateTime.UtcNow,
+            CreatedBy = solicitante,
+            UpdatedBy = solicitante,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.NegociacaoEventos.Add(evento);
+
+        await NotificarResponsavelAsync(agendaEntry, solicitante, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Visita solicitada pelo interessado {Usuario} para a negociação {NegociacaoId} em {DataHora}.",
+            solicitante,
+            negotiation.Id,
+            inicio);
+
+        TempData["Success"] = "Visita solicitada com sucesso. A equipe entrará em contato para confirmar.";
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpGet("documentos/{documentId:guid}/download")]
     public async Task<IActionResult> DownloadDocumento(Guid documentId, CancellationToken cancellationToken)
     {
@@ -223,7 +330,8 @@ public class HomeController : Controller
         string userId,
         CancellationToken cancellationToken,
         ApplicantPortalMessageInputModel? mensagem = null,
-        ApplicantDocumentUploadInputModel? upload = null)
+        ApplicantDocumentUploadInputModel? upload = null,
+        ApplicantVisitScheduleInputModel? agendamento = null)
     {
         var applicant = await _context.Interessados
             .AsNoTracking()
@@ -267,13 +375,23 @@ public class HomeController : Controller
                 Categoria = upload.Categoria
             };
 
+        var agendamentoModel = agendamento is null
+            ? new ApplicantVisitScheduleInputModel()
+            : new ApplicantVisitScheduleInputModel
+            {
+                NegociacaoId = agendamento.NegociacaoId,
+                DataHora = agendamento.DataHora,
+                Observacoes = agendamento.Observacoes
+            };
+
         return new ApplicantPortalViewModel
         {
             Nome = applicant.Nome,
             Negociacoes = negociacoes,
             MensagensRecentes = mensagensRecentes,
             NovaMensagem = mensagemModel,
-            Upload = uploadModel
+            Upload = uploadModel,
+            AgendamentoVisita = agendamentoModel
         };
     }
 
@@ -318,6 +436,45 @@ public class HomeController : Controller
                 Conteudo = m.Mensagem
             })
             .ToList();
+    }
+
+    private async Task NotificarResponsavelAsync(ScheduleEntry entrada, string solicitante, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(entrada.Responsavel))
+        {
+            return;
+        }
+
+        var usuario = await _userManager.FindByNameAsync(entrada.Responsavel);
+        if (usuario is null)
+        {
+            return;
+        }
+
+        var notificacao = new InAppNotification
+        {
+            UsuarioId = usuario.Id,
+            Titulo = "Visita agendada pelo interessado",
+            Mensagem = $"{entrada.Titulo} em {entrada.Inicio.ToLocalTime():dd/MM/yyyy HH:mm}",
+            LinkDestino = Url.Action("Index", "Agenda", new { area = string.Empty }) ?? string.Empty,
+            Lida = false,
+            CreatedBy = solicitante
+        };
+
+        _context.Notificacoes.Add(notificacao);
+    }
+
+    private async Task<string> GetCurrentUserDisplayNameAsync()
+    {
+        var usuario = await _userManager.GetUserAsync(User);
+        if (usuario is null)
+        {
+            return "Portal";
+        }
+
+        return string.IsNullOrWhiteSpace(usuario.NomeCompleto)
+            ? usuario.UserName ?? usuario.Email ?? "Portal"
+            : usuario.NomeCompleto;
     }
 
     private static ApplicantNegotiationViewModel MapNegotiation(Negotiation negotiation)

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Enumerations;
+using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.Operacional)]
 public class RelatoriosController : Controller
 {
     private readonly ApplicationDbContext _context;

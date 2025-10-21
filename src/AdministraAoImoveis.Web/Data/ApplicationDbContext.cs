@@ -25,6 +25,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Contract> Contratos => Set<Contract>();
     public DbSet<StoredFile> Arquivos => Set<StoredFile>();
     public DbSet<PropertyDocument> PropertyDocuments => Set<PropertyDocument>();
+    public DbSet<PropertyDocumentAcceptance> DocumentAcceptances => Set<PropertyDocumentAcceptance>();
     public DbSet<NegotiationDocument> NegotiationDocuments => Set<NegotiationDocument>();
     public DbSet<InspectionDocument> InspectionDocuments => Set<InspectionDocument>();
     public DbSet<FinancialTransaction> LancamentosFinanceiros => Set<FinancialTransaction>();
@@ -60,6 +61,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasMany(p => p.Documentos)
             .WithOne(d => d.Imovel)
             .HasForeignKey(d => d.ImovelId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<PropertyDocument>()
+            .HasMany(d => d.Aceites)
+            .WithOne(a => a.Documento)
+            .HasForeignKey(a => a.DocumentoId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<Owner>()

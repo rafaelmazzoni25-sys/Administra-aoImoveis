@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.AgendaSetores)]
 public class AgendaController : Controller
 {
     private readonly ApplicationDbContext _context;

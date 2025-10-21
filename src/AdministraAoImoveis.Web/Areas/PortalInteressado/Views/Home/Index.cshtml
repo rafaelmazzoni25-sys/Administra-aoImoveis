@@ -8,9 +8,19 @@
     var ativas = Model.Negociacoes.Count(n => n.Ativa);
     var pendenciasFinanceiras = Model.Negociacoes.Sum(n => n.Lancamentos.Count(l => l.Status == FinancialStatus.Pendente));
     var documentosDisponiveis = Model.Negociacoes.Sum(n => n.Documentos.Count);
+    var negociacoesAtivas = Model.Negociacoes.Where(n => n.Ativa).ToList();
 }
 
 <section class="space-y-6">
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success">@success</div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert alert-error">@error</div>
+    }
+
     <header class="space-y-1">
         <h2 class="text-2xl font-semibold text-slate-800">Olá, @Model.Nome</h2>
         <p class="text-sm text-slate-500">Acompanhe o andamento das suas negociações, envie documentos e converse com a equipe.</p>
@@ -250,6 +260,41 @@
                             <span class="text-xs text-red-600" asp-validation-for="Upload.Arquivo"></span>
                         </div>
                         <button class="btn-secondary w-full" type="submit">Enviar documento</button>
+                    </form>
+                }
+            </section>
+            <section class="space-y-3">
+                <h3 class="card-title">Agendar visita</h3>
+                @if (!Model.PodeAgendarVisita)
+                {
+                    <p class="empty-state">Nenhuma negociação ativa disponível para agendamento.</p>
+                }
+                else
+                {
+                    <form asp-action="AgendarVisita" method="post" class="space-y-3">
+                        @Html.AntiForgeryToken()
+                        <div>
+                            <label class="label" asp-for="AgendamentoVisita.NegociacaoId">Negociação</label>
+                            <select class="input" asp-for="AgendamentoVisita.NegociacaoId">
+                                <option value="">Selecione...</option>
+                                @foreach (var negociacao in negociacoesAtivas)
+                                {
+                                    <option value="@negociacao.Id" selected="@(Model.AgendamentoVisita.NegociacaoId == negociacao.Id ? "selected" : null)">@negociacao.Imovel</option>
+                                }
+                            </select>
+                            <span class="text-xs text-red-600" asp-validation-for="AgendamentoVisita.NegociacaoId"></span>
+                        </div>
+                        <div>
+                            <label class="label" asp-for="AgendamentoVisita.DataHora">Data e hora</label>
+                            <input class="input" asp-for="AgendamentoVisita.DataHora" type="datetime-local" />
+                            <span class="text-xs text-red-600" asp-validation-for="AgendamentoVisita.DataHora"></span>
+                        </div>
+                        <div>
+                            <label class="label" asp-for="AgendamentoVisita.Observacoes">Observações</label>
+                            <textarea class="input" rows="3" asp-for="AgendamentoVisita.Observacoes"></textarea>
+                            <span class="text-xs text-red-600" asp-validation-for="AgendamentoVisita.Observacoes"></span>
+                        </div>
+                        <button class="btn-primary w-full" type="submit">Solicitar visita</button>
                     </form>
                 }
             </section>

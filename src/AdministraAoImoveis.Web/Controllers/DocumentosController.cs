@@ -1,6 +1,11 @@
+using System.Globalization;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
+using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Infrastructure.FileStorage;
 using AdministraAoImoveis.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.GestaoImoveis)]
 [Route("Imoveis/{propertyId:guid}/Documentos")]
 public class DocumentosController : Controller
 {
@@ -214,6 +219,87 @@ public class DocumentosController : Controller
         return RedirectToAction(nameof(Index), new { propertyId });
     }
 
+    [HttpPost("{documentId:guid}/aceite")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegistrarAceite(
+        Guid propertyId,
+        Guid documentId,
+        PropertyDocumentAcceptanceInputModel input,
+        CancellationToken cancellationToken)
+    {
+        var documento = await _context.PropertyDocuments
+            .Include(d => d.Aceites)
+            .FirstOrDefaultAsync(d => d.Id == documentId && d.ImovelId == propertyId, cancellationToken);
+
+        if (documento is null)
+        {
+            return NotFound();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var mensagens = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .Where(m => !string.IsNullOrWhiteSpace(m))
+                .ToArray();
+
+            if (mensagens.Length > 0)
+            {
+                TempData["Error"] = string.Join(" ", mensagens);
+            }
+            return RedirectToAction(nameof(Index), new { propertyId });
+        }
+
+        var usuario = User?.Identity?.Name ?? "Sistema";
+        var agora = DateTime.UtcNow;
+        var aceite = new PropertyDocumentAcceptance
+        {
+            DocumentoId = documento.Id,
+            Tipo = input.Tipo,
+            Nome = input.Nome.Trim(),
+            Cargo = input.Cargo?.Trim() ?? string.Empty,
+            UsuarioSistema = usuario,
+            Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            Host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty,
+            CreatedBy = usuario,
+            RegistradoEm = agora
+        };
+
+        documento.Aceites.Add(aceite);
+        documento.UpdatedAt = agora;
+        documento.UpdatedBy = usuario;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        TempData["Success"] = "Aceite registrado com sucesso.";
+        return RedirectToAction(nameof(Index), new { propertyId });
+    }
+
+    [HttpPost("modelos")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GerarModelo(
+        Guid propertyId,
+        DocumentTemplateType tipo,
+        CancellationToken cancellationToken)
+    {
+        var property = await LoadPropertyAsync(propertyId, cancellationToken);
+        if (property is null)
+        {
+            return NotFound();
+        }
+
+        var html = RenderTemplate(tipo, property);
+        var nomeArquivo = tipo switch
+        {
+            DocumentTemplateType.ContratoLocacao => $"contrato-locacao-{property.CodigoInterno}-{DateTime.UtcNow:yyyyMMddHHmmss}.html",
+            DocumentTemplateType.LaudoVistoria => $"laudo-vistoria-{property.CodigoInterno}-{DateTime.UtcNow:yyyyMMddHHmmss}.html",
+            _ => $"documento-{property.CodigoInterno}-{DateTime.UtcNow:yyyyMMddHHmmss}.html"
+        };
+
+        return File(Encoding.UTF8.GetBytes(html), "text/html", nomeArquivo);
+    }
+
     [HttpGet("{documentId:guid}/download")]
     public async Task<IActionResult> Download(Guid propertyId, Guid documentId, CancellationToken cancellationToken)
     {
@@ -238,8 +324,14 @@ public class DocumentosController : Controller
     private async Task<Property?> LoadPropertyAsync(Guid propertyId, CancellationToken cancellationToken)
     {
         return await _context.Imoveis
+            .Include(p => p.Proprietario)
             .Include(p => p.Documentos)
                 .ThenInclude(d => d.Arquivo)
+            .Include(p => p.Documentos)
+                .ThenInclude(d => d.Aceites)
+            .Include(p => p.Negociacoes)
+                .ThenInclude(n => n.Interessado)
+            .Include(p => p.Vistorias)
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
     }
 
@@ -313,10 +405,28 @@ public class DocumentosController : Controller
                     ValidoAte = upload.ValidoAte,
                     RequerAceiteProprietario = upload.RequerAceiteProprietario,
                     AprovarAutomaticamente = upload.AprovarAutomaticamente
-                }
+                },
+            ModelosDisponiveis = GetTemplateOptions()
         };
 
         return model;
+    }
+
+    private static IReadOnlyCollection<DocumentTemplateOptionViewModel> GetTemplateOptions()
+    {
+        return new[]
+        {
+            new DocumentTemplateOptionViewModel
+            {
+                Valor = DocumentTemplateType.ContratoLocacao.ToString(),
+                Descricao = "Contrato interno de locação"
+            },
+            new DocumentTemplateOptionViewModel
+            {
+                Valor = DocumentTemplateType.LaudoVistoria.ToString(),
+                Descricao = "Laudo de vistoria"
+            }
+        };
     }
 
     private static PropertyDocumentVersionViewModel MapVersion(PropertyDocument documento, DateTime agora)
@@ -337,7 +447,185 @@ public class DocumentosController : Controller
             RequerAceiteProprietario = documento.RequerAceiteProprietario,
             RevisadoEm = documento.RevisadoEm,
             RevisadoPor = documento.RevisadoPor,
-            Observacoes = documento.Observacoes
+            Observacoes = documento.Observacoes,
+            Aceites = documento.Aceites
+                .OrderBy(a => a.RegistradoEm)
+                .Select(MapAcceptance)
+                .ToList()
         };
+    }
+
+    private static PropertyDocumentAcceptanceViewModel MapAcceptance(PropertyDocumentAcceptance aceite)
+    {
+        return new PropertyDocumentAcceptanceViewModel
+        {
+            Id = aceite.Id,
+            Tipo = aceite.Tipo,
+            Nome = aceite.Nome,
+            Cargo = aceite.Cargo,
+            UsuarioSistema = aceite.UsuarioSistema,
+            Ip = aceite.Ip,
+            Host = aceite.Host,
+            RegistradoEm = aceite.RegistradoEm
+        };
+    }
+
+    private string RenderTemplate(DocumentTemplateType tipo, Property property)
+    {
+        return tipo switch
+        {
+            DocumentTemplateType.ContratoLocacao => RenderContractTemplate(property),
+            DocumentTemplateType.LaudoVistoria => RenderInspectionTemplate(property),
+            _ => throw new ArgumentOutOfRangeException(nameof(tipo), tipo, null)
+        };
+    }
+
+    private static string RenderContractTemplate(Property property)
+    {
+        var cultura = CultureInfo.GetCultureInfo("pt-BR");
+        var proprietario = property.Proprietario;
+        var negotiation = property.Negociacoes
+            .OrderByDescending(n => n.CreatedAt)
+            .FirstOrDefault();
+
+        var interessado = negotiation?.Interessado;
+        var valorAluguel = negotiation?.ValorProposta.HasValue == true
+            ? negotiation!.ValorProposta.Value.ToString("C", cultura)
+            : "________";
+        var valorSinal = negotiation?.ValorSinal.HasValue == true
+            ? negotiation!.ValorSinal.Value.ToString("C", cultura)
+            : "________";
+
+        var sb = new StringBuilder();
+        sb.AppendLine("<html><head><meta charset=\"utf-8\" /><title>Contrato de Locação</title></head><body>");
+        sb.AppendLine($"<h1>Contrato de Locação - {WebUtility.HtmlEncode(property.CodigoInterno)}</h1>");
+        sb.AppendLine($"<p>Gerado em {DateTime.UtcNow.ToLocalTime():dd/MM/yyyy HH:mm}</p>");
+        sb.AppendLine("<section>");
+        sb.AppendLine("<h2>Proprietário</h2>");
+        sb.AppendLine($"<p>{WebUtility.HtmlEncode(proprietario?.Nome ?? "Nome do proprietário")} - Documento: {WebUtility.HtmlEncode(proprietario?.Documento ?? "___________")}</p>");
+        sb.AppendLine("</section>");
+
+        sb.AppendLine("<section>");
+        sb.AppendLine("<h2>Interessado</h2>");
+        sb.AppendLine($"<p>{WebUtility.HtmlEncode(interessado?.Nome ?? "Interessado")} - Documento: {WebUtility.HtmlEncode(interessado?.Documento ?? "___________")}</p>");
+        sb.AppendLine("</section>");
+
+        sb.AppendLine("<section>");
+        sb.AppendLine("<h2>Imóvel</h2>");
+        sb.AppendLine($"<p><strong>Endereço:</strong> {WebUtility.HtmlEncode(property.Endereco)} - {WebUtility.HtmlEncode(property.Bairro)} - {WebUtility.HtmlEncode(property.Cidade)}/{WebUtility.HtmlEncode(property.Estado)}</p>");
+        sb.AppendLine($"<p><strong>Características:</strong> Área {property.Area} m², {property.Quartos} quarto(s), {property.Banheiros} banheiro(s), {property.Vagas} vaga(s).</p>");
+        sb.AppendLine("</section>");
+
+        sb.AppendLine("<section>");
+        sb.AppendLine("<h2>Cláusulas financeiras</h2>");
+        sb.AppendLine($"<p><strong>Valor do aluguel:</strong> {valorAluguel}</p>");
+        sb.AppendLine($"<p><strong>Valor do sinal/caução:</strong> {valorSinal}</p>");
+        sb.AppendLine($"<p><strong>Data prevista de início:</strong> {(negotiation?.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy", cultura) ?? "____/____/____")}</p>");
+        sb.AppendLine("</section>");
+
+        sb.AppendLine("<section>");
+        sb.AppendLine("<h2>Aceites presenciais</h2>");
+        sb.AppendLine("<p>Espaço reservado para assinaturas físicas das partes envolvidas.</p>");
+        sb.AppendLine("<p>__________________________________________</p>");
+        sb.AppendLine("<p>__________________________________________</p>");
+        sb.AppendLine("</section>");
+
+        sb.AppendLine("</body></html>");
+        return sb.ToString();
+    }
+
+    private static string RenderInspectionTemplate(Property property)
+    {
+        var cultura = CultureInfo.GetCultureInfo("pt-BR");
+        var vistoria = property.Vistorias
+            .OrderByDescending(v => v.Inicio ?? v.AgendadaPara)
+            .FirstOrDefault();
+
+        var sb = new StringBuilder();
+        sb.AppendLine("<html><head><meta charset=\"utf-8\" /><title>Laudo de Vistoria</title></head><body>");
+        sb.AppendLine($"<h1>Laudo de Vistoria - {WebUtility.HtmlEncode(property.CodigoInterno)}</h1>");
+        sb.AppendLine($"<p>Gerado em {DateTime.UtcNow.ToLocalTime():dd/MM/yyyy HH:mm}</p>");
+        sb.AppendLine("<section>");
+        sb.AppendLine("<h2>Dados do Imóvel</h2>");
+        sb.AppendLine($"<p>{WebUtility.HtmlEncode(property.Endereco)} - {WebUtility.HtmlEncode(property.Bairro)} - {WebUtility.HtmlEncode(property.Cidade)}/{WebUtility.HtmlEncode(property.Estado)}</p>");
+        sb.AppendLine("</section>");
+
+        if (vistoria is not null)
+        {
+            sb.AppendLine("<section>");
+            sb.AppendLine("<h2>Informações da vistoria</h2>");
+            sb.AppendLine($"<p><strong>Tipo:</strong> {WebUtility.HtmlEncode(vistoria.Tipo.ToString())}</p>");
+            sb.AppendLine($"<p><strong>Status:</strong> {WebUtility.HtmlEncode(vistoria.Status.ToString())}</p>");
+            sb.AppendLine($"<p><strong>Responsável:</strong> {WebUtility.HtmlEncode(vistoria.Responsavel)}</p>");
+            sb.AppendLine($"<p><strong>Início:</strong> {(vistoria.Inicio?.ToLocalTime().ToString("dd/MM/yyyy HH:mm", cultura) ?? "--")}</p>");
+            sb.AppendLine($"<p><strong>Fim:</strong> {(vistoria.Fim?.ToLocalTime().ToString("dd/MM/yyyy HH:mm", cultura) ?? "--")}</p>");
+            sb.AppendLine("</section>");
+
+            sb.AppendLine("<section>");
+            sb.AppendLine("<h2>Checklist registrado</h2>");
+            sb.AppendLine(RenderChecklist(vistoria.ChecklistJson));
+            sb.AppendLine("</section>");
+
+            if (!string.IsNullOrWhiteSpace(vistoria.Observacoes))
+            {
+                sb.AppendLine("<section>");
+                sb.AppendLine("<h2>Observações</h2>");
+                sb.AppendLine($"<p>{WebUtility.HtmlEncode(vistoria.Observacoes)}</p>");
+                sb.AppendLine("</section>");
+            }
+        }
+        else
+        {
+            sb.AppendLine("<section>");
+            sb.AppendLine("<h2>Informações da vistoria</h2>");
+            sb.AppendLine("<p>Nenhuma vistoria cadastrada. Preencha os dados manualmente.</p>");
+            sb.AppendLine("</section>");
+        }
+
+        sb.AppendLine("<section>");
+        sb.AppendLine("<h2>Aceite presencial</h2>");
+        sb.AppendLine("<p>__________________________________________</p>");
+        sb.AppendLine("<p>__________________________________________</p>");
+        sb.AppendLine("</section>");
+
+        sb.AppendLine("</body></html>");
+        return sb.ToString();
+    }
+
+    private static string RenderChecklist(string? checklistJson)
+    {
+        if (string.IsNullOrWhiteSpace(checklistJson))
+        {
+            return "<p>Checklist não informado.</p>";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(checklistJson);
+            if (document.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                var builder = new StringBuilder("<ul>");
+                foreach (var item in document.RootElement.EnumerateObject())
+                {
+                    var value = item.Value.ValueKind switch
+                    {
+                        JsonValueKind.String => item.Value.GetString(),
+                        JsonValueKind.Number => item.Value.ToString(),
+                        JsonValueKind.True => "Sim",
+                        JsonValueKind.False => "Não",
+                        _ => item.Value.ToString()
+                    };
+                    builder.AppendLine($"<li><strong>{WebUtility.HtmlEncode(item.Name)}:</strong> {WebUtility.HtmlEncode(value ?? string.Empty)}</li>");
+                }
+                builder.AppendLine("</ul>");
+                return builder.ToString();
+            }
+        }
+        catch (JsonException)
+        {
+            // Ignora parsing e retorna conteúdo bruto abaixo.
+        }
+
+        return $"<pre>{WebUtility.HtmlEncode(checklistJson)}</pre>";
     }
 }

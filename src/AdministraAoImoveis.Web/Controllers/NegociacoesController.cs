@@ -3,6 +3,7 @@ using System.Text.Json;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
+using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,7 @@ using AdministraAoImoveis.Web.Services;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.Operacional)]
 public class NegociacoesController : Controller
 {
     private readonly ApplicationDbContext _context;
@@ -25,6 +26,7 @@ public class NegociacoesController : Controller
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
+        await LiberarReservasExpiradasAsync(cancellationToken);
         var colunas = new Dictionary<NegotiationStage, IReadOnlyCollection<Domain.Entities.Negotiation>>();
         foreach (NegotiationStage stage in Enum.GetValues(typeof(NegotiationStage)))
         {
@@ -32,6 +34,7 @@ public class NegociacoesController : Controller
                 .Where(n => n.Etapa == stage && n.Ativa)
                 .Include(n => n.Imovel)
                 .Include(n => n.Interessado)
+                .Include(n => n.LancamentosFinanceiros)
                 .OrderBy(n => n.CreatedAt)
                 .ToListAsync(cancellationToken);
             colunas[stage] = negotiations;
@@ -54,6 +57,7 @@ public class NegociacoesController : Controller
     {
         var negotiation = await _context.Negociacoes
             .Include(n => n.Imovel)
+            .Include(n => n.LancamentosFinanceiros)
             .FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
         if (negotiation is null)
@@ -87,6 +91,7 @@ public class NegociacoesController : Controller
     {
         var negotiation = await _context.Negociacoes
             .Include(n => n.Imovel)
+            .Include(n => n.LancamentosFinanceiros)
             .FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
         if (negotiation is null)
@@ -97,6 +102,12 @@ public class NegociacoesController : Controller
         if (!negotiation.Ativa)
         {
             TempData["Error"] = "A negociação já está encerrada.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (concluida && negotiation.LancamentosFinanceiros.Any(l => l.Status == FinancialStatus.Pendente))
+        {
+            TempData["Error"] = "Conclua ou cancele os lançamentos financeiros antes de encerrar a negociação.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -142,6 +153,7 @@ public class NegociacoesController : Controller
 
         var negotiation = await _context.Negociacoes
             .Include(n => n.Imovel)
+            .Include(n => n.LancamentosFinanceiros)
             .FirstOrDefaultAsync(n => n.Id == request.NegotiationId, cancellationToken);
 
         if (negotiation is null)
@@ -187,6 +199,12 @@ public class NegociacoesController : Controller
         if (possuiOutraAtiva)
         {
             return new NegotiationUpdateResult(false, "Existe outra negociação ativa para o imóvel.", string.Empty, null, null, null);
+        }
+
+        var possuiFinanceiroPendente = negotiation.LancamentosFinanceiros.Any(l => l.Status == FinancialStatus.Pendente);
+        if (possuiFinanceiroPendente && novaEtapa >= NegotiationStage.ContratoEmitido)
+        {
+            return new NegotiationUpdateResult(false, "Existem pendências financeiras que impedem o avanço da negociação.", string.Empty, null, null, null);
         }
 
         var antes = JsonSerializer.Serialize(negotiation);
@@ -271,6 +289,47 @@ public class NegociacoesController : Controller
 
         _context.NegociacaoEventos.Add(evento);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task LiberarReservasExpiradasAsync(CancellationToken cancellationToken)
+    {
+        var agora = DateTime.UtcNow;
+        var expiradas = await _context.Negociacoes
+            .Include(n => n.Imovel)
+            .Where(n => n.Ativa && n.ReservadoAte != null && n.ReservadoAte < agora)
+            .ToListAsync(cancellationToken);
+
+        if (expiradas.Count == 0)
+        {
+            return;
+        }
+
+        var auditorias = new List<(Domain.Entities.Negotiation Negociacao, string Antes, string Depois)>();
+
+        foreach (var negotiation in expiradas)
+        {
+            var antes = JsonSerializer.Serialize(negotiation);
+            negotiation.ReservadoAte = null;
+            negotiation.ValorSinal = null;
+            if (negotiation.Imovel is not null)
+            {
+                negotiation.Imovel.StatusDisponibilidade = AvailabilityStatus.EmNegociacao;
+                negotiation.Imovel.DataPrevistaDisponibilidade = null;
+                negotiation.Imovel.UpdatedAt = agora;
+            }
+
+            negotiation.UpdatedAt = agora;
+            var depois = JsonSerializer.Serialize(negotiation);
+            auditorias.Add((negotiation, antes, depois));
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        foreach (var (negociacao, antes, depois) in auditorias)
+        {
+            await RegistrarAuditoriaAsync(negociacao, "RESERVATION_EXPIRED", cancellationToken, antes, depois);
+            await RegistrarEventoAsync(negociacao, "Reserva expirada", "Reserva encerrada automaticamente após o vencimento.", cancellationToken);
+        }
     }
 
     private sealed record NegotiationUpdateResult(

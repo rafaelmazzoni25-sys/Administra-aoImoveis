@@ -2,6 +2,7 @@ using System.Text.Json;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
+using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Models;
 using AdministraAoImoveis.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.GestaoImoveis)]
 public class ImoveisController : Controller
 {
     private readonly ApplicationDbContext _context;

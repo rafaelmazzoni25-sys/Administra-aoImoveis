@@ -16,4 +16,5 @@ public class PropertyDocument : BaseEntity
     public DateTime? RevisadoEm { get; set; }
     public string? RevisadoPor { get; set; }
     public string? Observacoes { get; set; }
+    public ICollection<PropertyDocumentAcceptance> Aceites { get; set; } = new List<PropertyDocumentAcceptance>();
 }

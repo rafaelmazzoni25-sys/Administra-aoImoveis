@@ -35,6 +35,56 @@
     </section>
 
     <section class="card space-y-4">
+        <h3 class="card-title">Anexos da vistoria</h3>
+        @if (!Model.Documentos.Any())
+        {
+            <p class="text-sm text-slate-500">Nenhum documento anexado.</p>
+        }
+        else
+        {
+            <table class="table text-sm">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Arquivo</th>
+                        <th>Enviado em</th>
+                        <th>Responsável</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var documento in Model.Documentos)
+                    {
+                        <tr>
+                            <td>@documento.Tipo</td>
+                            <td>@documento.NomeArquivo</td>
+                            <td>@documento.CreatedAt.ToLocalTime():dd/MM/yyyy HH:mm</td>
+                            <td>@documento.CreatedBy</td>
+                            <td class="text-right">
+                                <a class="text-blue-600 hover:underline" asp-action="DownloadDocumento" asp-route-id="@Model.Id" asp-route-documentoId="@documento.Id">Download</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        <form class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end" method="post" enctype="multipart/form-data" asp-action="UploadDocumento" asp-route-id="@Model.Id">
+            @Html.AntiForgeryToken()
+            <div class="md:col-span-2">
+                <label class="input-label" for="tipoDocumento">Tipo</label>
+                <input class="input" id="tipoDocumento" name="Tipo" required />
+            </div>
+            <div class="md:col-span-2">
+                <label class="input-label" for="arquivoDocumento">Arquivo</label>
+                <input class="input" id="arquivoDocumento" type="file" name="Arquivo" required />
+            </div>
+            <div class="flex justify-end md:col-span-4">
+                <button class="btn-secondary" type="submit">Adicionar anexo</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card space-y-4">
         <h3 class="card-title">Atualizar andamento</h3>
         <form asp-action="RegistrarAndamento" method="post" class="space-y-4">
             @Html.AntiForgeryToken()

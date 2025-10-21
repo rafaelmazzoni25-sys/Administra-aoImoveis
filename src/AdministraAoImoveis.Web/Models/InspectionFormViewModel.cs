@@ -41,4 +41,6 @@ public class InspectionFormViewModel
     public DateTime? Fim { get; set; }
 
     public string PendenciasTexto { get; set; } = string.Empty;
+    public IReadOnlyCollection<InspectionDocumentViewModel> Documentos { get; set; } = Array.Empty<InspectionDocumentViewModel>();
+    public InspectionDocumentUploadInputModel Upload { get; set; } = new();
 }

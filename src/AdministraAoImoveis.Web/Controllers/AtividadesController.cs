@@ -2,6 +2,7 @@ using System.Text.Json;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
+using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Infrastructure.FileStorage;
 using AdministraAoImoveis.Web.Models;
 using AdministraAoImoveis.Web.Services;
@@ -11,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.Operacional)]
 public class AtividadesController : Controller
 {
     private static readonly ActivityStatus[] FinalStatuses =

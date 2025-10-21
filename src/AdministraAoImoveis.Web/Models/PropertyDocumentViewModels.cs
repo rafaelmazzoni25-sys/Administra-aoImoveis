@@ -17,6 +17,20 @@ public class PropertyDocumentVersionViewModel
     public DateTime? RevisadoEm { get; set; }
     public string? RevisadoPor { get; set; }
     public string? Observacoes { get; set; }
+    public IReadOnlyCollection<PropertyDocumentAcceptanceViewModel> Aceites { get; set; }
+        = Array.Empty<PropertyDocumentAcceptanceViewModel>();
+}
+
+public class PropertyDocumentAcceptanceViewModel
+{
+    public Guid Id { get; set; }
+    public DocumentAcceptanceType Tipo { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public string Cargo { get; set; } = string.Empty;
+    public string UsuarioSistema { get; set; } = string.Empty;
+    public string Ip { get; set; } = string.Empty;
+    public string Host { get; set; } = string.Empty;
+    public DateTime RegistradoEm { get; set; }
 }
 
 public class PropertyDocumentGroupViewModel
@@ -78,4 +92,25 @@ public class PropertyDocumentLibraryViewModel
     public IReadOnlyCollection<PropertyDocumentGroupViewModel> Grupos { get; set; }
         = Array.Empty<PropertyDocumentGroupViewModel>();
     public PropertyDocumentUploadInputModel Upload { get; set; } = new();
+    public IReadOnlyCollection<DocumentTemplateOptionViewModel> ModelosDisponiveis { get; set; }
+        = Array.Empty<DocumentTemplateOptionViewModel>();
+}
+
+public class PropertyDocumentAcceptanceInputModel
+{
+    [Required(ErrorMessage = "Selecione o tipo de aceite.")]
+    public DocumentAcceptanceType Tipo { get; set; }
+
+    [Required(ErrorMessage = "Informe o nome do responsável.")]
+    [StringLength(120, ErrorMessage = "Nome deve ter até 120 caracteres.")]
+    public string Nome { get; set; } = string.Empty;
+
+    [StringLength(120, ErrorMessage = "Cargo deve ter até 120 caracteres.")]
+    public string Cargo { get; set; } = string.Empty;
+}
+
+public class DocumentTemplateOptionViewModel
+{
+    public string Valor { get; set; } = string.Empty;
+    public string Descricao { get; set; } = string.Empty;
 }

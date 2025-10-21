@@ -2,6 +2,8 @@ using System.Text.Json;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
+using AdministraAoImoveis.Web.Domain.Users;
+using AdministraAoImoveis.Web.Infrastructure.FileStorage;
 using AdministraAoImoveis.Web.Models;
 using AdministraAoImoveis.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -10,16 +12,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.VistoriaEquipe)]
 public class VistoriasController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly IAuditTrailService _auditTrailService;
+    private readonly IFileStorageService _fileStorageService;
 
-    public VistoriasController(ApplicationDbContext context, IAuditTrailService auditTrailService)
+    private const string StorageCategory = "inspection-documents";
+
+    public VistoriasController(ApplicationDbContext context, IAuditTrailService auditTrailService, IFileStorageService fileStorageService)
     {
         _context = context;
         _auditTrailService = auditTrailService;
+        _fileStorageService = fileStorageService;
     }
 
     public async Task<IActionResult> Index([FromQuery] InspectionStatus? status, [FromQuery] InspectionType? tipo, CancellationToken cancellationToken)
@@ -203,6 +209,7 @@ public class VistoriasController : Controller
         var vistoria = await _context.Vistorias
             .Include(v => v.Imovel)
             .Include(v => v.Documentos)
+                .ThenInclude(d => d.Arquivo)
             .FirstOrDefaultAsync(v => v.Id == id, cancellationToken);
 
         if (vistoria is null)
@@ -226,6 +233,11 @@ public class VistoriasController : Controller
         };
 
         model = await MontarFormularioAsync(model, cancellationToken);
+        model.Documentos = vistoria.Documentos
+            .OrderByDescending(d => d.CreatedAt)
+            .Select(MapDocument)
+            .ToList();
+        model.Upload = new InspectionDocumentUploadInputModel();
         return View("Details", model);
     }
 
@@ -273,6 +285,75 @@ public class VistoriasController : Controller
 
         TempData["Success"] = "Status da vistoria atualizado.";
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadDocumento(Guid id, InspectionDocumentUploadInputModel input, CancellationToken cancellationToken)
+    {
+        var vistoria = await _context.Vistorias
+            .Include(v => v.Documentos)
+            .FirstOrDefaultAsync(v => v.Id == id, cancellationToken);
+
+        if (vistoria is null)
+        {
+            return NotFound();
+        }
+
+        if (!ModelState.IsValid || input.Arquivo is null)
+        {
+            var mensagem = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .FirstOrDefault(m => !string.IsNullOrWhiteSpace(m))
+                ?? "Informe o tipo e selecione um arquivo.";
+
+            TempData["Error"] = mensagem;
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var usuario = User?.Identity?.Name ?? "Sistema";
+        await using var stream = input.Arquivo.OpenReadStream();
+        var stored = await _fileStorageService.SaveAsync(
+            input.Arquivo.FileName,
+            input.Arquivo.ContentType,
+            stream,
+            StorageCategory,
+            cancellationToken);
+
+        stored.CreatedBy = usuario;
+        _context.Arquivos.Add(stored);
+
+        var documento = new InspectionDocument
+        {
+            VistoriaId = vistoria.Id,
+            ArquivoId = stored.Id,
+            Arquivo = stored,
+            Tipo = input.Tipo.Trim(),
+            CreatedBy = usuario
+        };
+
+        vistoria.Documentos.Add(documento);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        TempData["Success"] = "Documento anexado à vistoria.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DownloadDocumento(Guid id, Guid documentoId, CancellationToken cancellationToken)
+    {
+        var documento = await _context.InspectionDocuments
+            .Include(d => d.Arquivo)
+            .FirstOrDefaultAsync(d => d.Id == documentoId && d.VistoriaId == id, cancellationToken);
+
+        if (documento is null || documento.Arquivo is null)
+        {
+            return NotFound();
+        }
+
+        var stream = await _fileStorageService.OpenAsync(documento.Arquivo, cancellationToken);
+        return File(stream, documento.Arquivo.ConteudoTipo, documento.Arquivo.NomeOriginal);
     }
 
     private async Task<InspectionFormViewModel> MontarFormularioAsync(InspectionFormViewModel model, CancellationToken cancellationToken)
@@ -384,5 +465,17 @@ public class VistoriasController : Controller
         var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
 
         await _auditTrailService.RegisterAsync("Inspection", vistoria.Id, operacao, antes, depois, usuario, ip, host, cancellationToken);
+    }
+
+    private static InspectionDocumentViewModel MapDocument(InspectionDocument documento)
+    {
+        return new InspectionDocumentViewModel
+        {
+            Id = documento.Id,
+            Tipo = documento.Tipo,
+            NomeArquivo = documento.Arquivo?.NomeOriginal ?? "Arquivo",
+            CreatedAt = documento.CreatedAt,
+            CreatedBy = documento.CreatedBy
+        };
     }
 }
