@@ -10,6 +10,21 @@
         <p class="text-sm text-slate-500">Acompanhe o status dos seus imóveis, documentos e mensagens diretamente pelo portal.</p>
     </header>
 
+    @if (TempData["Error"] is string errorMessage)
+    {
+        <div class="alert alert-error">@errorMessage</div>
+    }
+
+    @if (TempData["Success"] is string successMessage)
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
+    @if (TempData["Info"] is string infoMessage)
+    {
+        <div class="alert alert-info">@infoMessage</div>
+    }
+
     <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <article class="card bg-slate-900 text-white">
             <p class="text-xs uppercase tracking-wide text-slate-200">Total de imóveis</p>
@@ -75,7 +90,17 @@
                                 <td>@doc.Status</td>
                                 <td>@(doc.ValidoAte?.ToLocalTime().ToString("dd/MM/yyyy") ?? "-")</td>
                                 <td class="text-right">
-                                    <a class="btn-secondary" asp-area="" asp-controller="Documentos" asp-action="Download" asp-route-propertyId="@doc.ImovelId" asp-route-documentId="@doc.DocumentoId">Baixar</a>
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                        <a class="btn-secondary" asp-area="" asp-controller="Documentos" asp-action="Download" asp-route-propertyId="@doc.ImovelId" asp-route-documentId="@doc.DocumentoId">Baixar</a>
+                                        <form asp-area="PortalProprietario" asp-controller="Home" asp-action="AceitarDocumento" asp-route-documentoId="@doc.DocumentoId" method="post" class="inline">
+                                            @Html.AntiForgeryToken()
+                                            <button class="btn-primary" type="submit">Aceitar</button>
+                                        </form>
+                                        <form asp-area="PortalProprietario" asp-controller="Home" asp-action="RecusarDocumento" asp-route-documentoId="@doc.DocumentoId" method="post" class="inline">
+                                            @Html.AntiForgeryToken()
+                                            <button class="btn-danger" type="submit" onclick="return confirm('Deseja recusar este documento?');">Recusar</button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         }
