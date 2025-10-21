@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.Json;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using AdministraAoImoveis.Web.Services;
 
 namespace AdministraAoImoveis.Web.Areas.PortalInteressado.Controllers;
 
@@ -24,17 +26,20 @@ public class HomeController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IFileStorageService _fileStorageService;
     private readonly ILogger<HomeController> _logger;
+    private readonly IAuditTrailService _auditTrailService;
 
     public HomeController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         IFileStorageService fileStorageService,
-        ILogger<HomeController> logger)
+        ILogger<HomeController> logger,
+        IAuditTrailService auditTrailService)
     {
         _context = context;
         _userManager = userManager;
         _fileStorageService = fileStorageService;
         _logger = logger;
+        _auditTrailService = auditTrailService;
     }
 
     [HttpGet]
@@ -93,6 +98,14 @@ public class HomeController : Controller
 
         _context.Mensagens.Add(mensagem);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await RegistrarAuditoriaAsync(
+            "ContextMessage",
+            mensagem.Id,
+            "CREATE",
+            string.Empty,
+            SerializeMensagem(mensagem),
+            cancellationToken);
 
         _logger.LogInformation(
             "Mensagem registrada no portal do interessado para a negociação {NegociacaoId} por {Usuario}.",
@@ -174,6 +187,14 @@ public class HomeController : Controller
 
         _context.NegotiationDocuments.Add(documento);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await RegistrarAuditoriaAsync(
+            "NegotiationDocument",
+            documento.Id,
+            "CREATE",
+            string.Empty,
+            SerializeNegotiationDocument(documento),
+            cancellationToken);
 
         _logger.LogInformation(
             "Documento {Categoria} v{Versao} enviado pelo interessado para a negociação {NegociacaoId}.",
@@ -287,6 +308,22 @@ public class HomeController : Controller
         await NotificarResponsavelAsync(agendaEntry, solicitante, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
+        await RegistrarAuditoriaAsync(
+            "ScheduleEntry",
+            agendaEntry.Id,
+            "CREATE",
+            string.Empty,
+            SerializeScheduleEntry(agendaEntry),
+            cancellationToken);
+
+        await RegistrarAuditoriaAsync(
+            "NegotiationEvent",
+            evento.Id,
+            "CREATE",
+            string.Empty,
+            SerializeNegotiationEvent(evento),
+            cancellationToken);
+
         _logger.LogInformation(
             "Visita solicitada pelo interessado {Usuario} para a negociação {NegociacaoId} em {DataHora}.",
             solicitante,
@@ -318,6 +355,13 @@ public class HomeController : Controller
         }
 
         var stream = await _fileStorageService.OpenAsync(documento.Arquivo, cancellationToken);
+        await RegistrarAuditoriaAsync(
+            "NegotiationDocument",
+            documento.Id,
+            "DOWNLOAD",
+            string.Empty,
+            string.Empty,
+            cancellationToken);
         _logger.LogInformation(
             "Documento {DocumentoId} baixado pelo interessado vinculado à negociação {NegociacaoId}.",
             documento.Id,
@@ -541,5 +585,112 @@ public class HomeController : Controller
             Lancamentos = lancamentos,
             Documentos = documentos
         };
+    }
+
+    private async Task RegistrarAuditoriaAsync(
+        string entidade,
+        Guid entidadeId,
+        string operacao,
+        string antes,
+        string depois,
+        CancellationToken cancellationToken)
+    {
+        var usuario = User?.Identity?.Name ?? "Portal";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
+
+        await _auditTrailService.RegisterAsync(
+            entidade,
+            entidadeId,
+            operacao,
+            antes,
+            depois,
+            usuario,
+            ip,
+            host,
+            cancellationToken);
+    }
+
+    private static string SerializeMensagem(ContextMessage mensagem)
+    {
+        var payload = new
+        {
+            mensagem.Id,
+            mensagem.ContextoTipo,
+            mensagem.ContextoId,
+            mensagem.UsuarioId,
+            mensagem.Mensagem,
+            mensagem.EnviadaEm,
+            mensagem.CreatedAt,
+            mensagem.CreatedBy
+        };
+
+        return JsonSerializer.Serialize(payload);
+    }
+
+    private static string SerializeNegotiationDocument(NegotiationDocument documento)
+    {
+        var payload = new
+        {
+            documento.Id,
+            documento.NegociacaoId,
+            documento.Categoria,
+            documento.Versao,
+            documento.ArquivoId,
+            documento.CreatedAt,
+            documento.CreatedBy
+        };
+
+        return JsonSerializer.Serialize(payload);
+    }
+
+    private static string SerializeScheduleEntry(ScheduleEntry entrada)
+    {
+        var payload = new
+        {
+            entrada.Id,
+            entrada.Titulo,
+            entrada.Tipo,
+            entrada.Setor,
+            entrada.Inicio,
+            entrada.Fim,
+            entrada.Responsavel,
+            entrada.ImovelId,
+            entrada.NegociacaoId,
+            entrada.Observacoes,
+            entrada.CreatedAt,
+            entrada.CreatedBy
+        };
+
+        return JsonSerializer.Serialize(payload);
+    }
+
+    private static string SerializeNegotiationEvent(NegotiationEvent evento)
+    {
+        var payload = new
+        {
+            evento.Id,
+            evento.NegociacaoId,
+            evento.Titulo,
+            evento.Descricao,
+            evento.Responsavel,
+            evento.OcorridoEm,
+            evento.CreatedAt,
+            evento.CreatedBy
+        };
+    }
+
+    private async Task<IReadOnlyCollection<PortalMessageViewModel>> LoadMessagesAsync(
+        IReadOnlyDictionary<Guid, string> negotiationLookup,
+        CancellationToken cancellationToken)
+    {
+        if (negotiationLookup.Count == 0)
+        {
+            return Array.Empty<PortalMessageViewModel>();
+        }
+
+        var negotiationIds = negotiationLookup.Keys.ToArray();
+
+        return JsonSerializer.Serialize(payload);
     }
 }

@@ -1,8 +1,12 @@
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
 using AdministraAoImoveis.Web.Domain.Users;
 using AdministraAoImoveis.Web.Models;
+using AdministraAoImoveis.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,11 +34,16 @@ public class FinanceiroController : Controller
 
     private readonly ApplicationDbContext _context;
     private readonly ILogger<FinanceiroController> _logger;
+    private readonly IAuditTrailService _auditTrailService;
 
-    public FinanceiroController(ApplicationDbContext context, ILogger<FinanceiroController> logger)
+    public FinanceiroController(
+        ApplicationDbContext context,
+        ILogger<FinanceiroController> logger,
+        IAuditTrailService auditTrailService)
     {
         _context = context;
         _logger = logger;
+        _auditTrailService = auditTrailService;
     }
 
     [HttpGet]
@@ -92,6 +101,13 @@ public class FinanceiroController : Controller
         negotiation.LancamentosFinanceiros.Add(lancamento);
         await _context.SaveChangesAsync(cancellationToken);
 
+        await RegistrarAuditoriaLancamentoAsync(
+            lancamento,
+            "CREATE",
+            string.Empty,
+            SerializeLancamento(lancamento),
+            cancellationToken);
+
         _logger.LogInformation(
             "Lançamento financeiro {LancamentoId} criado para a negociação {NegociacaoId} pelo usuário {Usuario}",
             lancamento.Id,
@@ -133,6 +149,7 @@ public class FinanceiroController : Controller
             return NotFound();
         }
 
+        var antes = SerializeLancamento(lancamento);
         var erros = ValidateStatusUpdate(lancamento, input);
         if (erros.Count > 0)
         {
@@ -161,6 +178,13 @@ public class FinanceiroController : Controller
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        await RegistrarAuditoriaLancamentoAsync(
+            lancamento,
+            "STATUS_UPDATE",
+            antes,
+            SerializeLancamento(lancamento),
+            cancellationToken);
+
         _logger.LogInformation(
             "Status do lançamento {LancamentoId} atualizado para {Status} na negociação {NegociacaoId}.",
             lancamento.Id,
@@ -171,6 +195,60 @@ public class FinanceiroController : Controller
         return RedirectToAction(nameof(Index), new { negotiationId });
     }
 
+    [HttpGet("exportar/csv")]
+    public async Task<IActionResult> ExportarCsv(Guid negotiationId, CancellationToken cancellationToken)
+    {
+        var negotiation = await _context.Negociacoes
+            .AsNoTracking()
+            .Include(n => n.Imovel)
+            .Include(n => n.Interessado)
+            .Include(n => n.LancamentosFinanceiros)
+            .FirstOrDefaultAsync(n => n.Id == negotiationId, cancellationToken);
+
+        if (negotiation is null)
+        {
+            return NotFound();
+        }
+
+        var cultura = CultureInfo.GetCultureInfo("pt-BR");
+        var culturaIso = CultureInfo.InvariantCulture;
+        var builder = new StringBuilder();
+        builder.AppendLine("Tipo;Valor;Status;Previsto;Efetivacao;Observacao");
+
+        foreach (var lancamento in negotiation.LancamentosFinanceiros.OrderBy(l => l.DataPrevista ?? l.CreatedAt))
+        {
+            builder.AppendLine(string.Join(';',
+                lancamento.TipoLancamento.Replace(';', ','),
+                lancamento.Valor.ToString("F2", cultura),
+                lancamento.Status,
+                lancamento.DataPrevista?.ToString("s", culturaIso) ?? string.Empty,
+                lancamento.DataEfetivacao?.ToString("s", culturaIso) ?? string.Empty,
+                (lancamento.Observacao ?? string.Empty).Replace(';', ',')));
+        }
+
+        await RegistrarRelatorioAsync(negotiation.Id, "EXPORT_CSV", cancellationToken);
+
+        var conteudo = builder.ToString();
+        var fileName = $"financeiro-{(negotiation.Imovel?.CodigoInterno ?? negotiation.Id.ToString("N"))}-{DateTime.UtcNow:yyyyMMddHHmmss}.csv";
+        return File(Encoding.UTF8.GetBytes(conteudo), "text/csv", fileName);
+    }
+
+    [HttpGet("exportar/html")]
+    public async Task<IActionResult> ExportarHtml(Guid negotiationId, CancellationToken cancellationToken)
+    {
+        var model = await BuildViewModelAsync(negotiationId, cancellationToken);
+        if (model is null)
+        {
+            return NotFound();
+        }
+
+        await RegistrarRelatorioAsync(negotiationId, "EXPORT_HTML", cancellationToken);
+
+        ViewData["Titulo"] = "Relatório financeiro da negociação";
+        ViewData["GeradoEm"] = DateTime.UtcNow;
+        return View("ExportarHtml", model);
+    }
+
     private async Task<Negotiation?> LoadNegotiationAsync(Guid negotiationId, CancellationToken cancellationToken)
     {
         return await _context.Negociacoes
@@ -178,6 +256,68 @@ public class FinanceiroController : Controller
             .Include(n => n.Interessado)
             .Include(n => n.LancamentosFinanceiros)
             .FirstOrDefaultAsync(n => n.Id == negotiationId, cancellationToken);
+    }
+
+    private async Task RegistrarAuditoriaLancamentoAsync(
+        FinancialTransaction lancamento,
+        string operacao,
+        string antes,
+        string depois,
+        CancellationToken cancellationToken)
+    {
+        var usuario = User?.Identity?.Name ?? "Sistema";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
+
+        await _auditTrailService.RegisterAsync(
+            "FinancialTransaction",
+            lancamento.Id,
+            operacao,
+            antes,
+            depois,
+            usuario,
+            ip,
+            host,
+            cancellationToken);
+    }
+
+    private async Task RegistrarRelatorioAsync(Guid negotiationId, string operacao, CancellationToken cancellationToken)
+    {
+        var usuario = User?.Identity?.Name ?? "Sistema";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
+
+        await _auditTrailService.RegisterAsync(
+            "FinancialReport",
+            negotiationId,
+            operacao,
+            string.Empty,
+            string.Empty,
+            usuario,
+            ip,
+            host,
+            cancellationToken);
+    }
+
+    private static string SerializeLancamento(FinancialTransaction lancamento)
+    {
+        var payload = new
+        {
+            lancamento.Id,
+            lancamento.NegociacaoId,
+            lancamento.TipoLancamento,
+            lancamento.Valor,
+            lancamento.Status,
+            lancamento.DataPrevista,
+            lancamento.DataEfetivacao,
+            lancamento.Observacao,
+            lancamento.CreatedAt,
+            lancamento.CreatedBy,
+            lancamento.UpdatedAt,
+            lancamento.UpdatedBy
+        };
+
+        return JsonSerializer.Serialize(payload);
     }
 
     private async Task<FinancialTransactionListViewModel?> BuildViewModelAsync(

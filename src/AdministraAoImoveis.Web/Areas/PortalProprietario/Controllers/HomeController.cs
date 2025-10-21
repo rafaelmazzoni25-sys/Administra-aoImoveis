@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.Json;
 using AdministraAoImoveis.Web.Data;
 using AdministraAoImoveis.Web.Domain.Entities;
 using AdministraAoImoveis.Web.Domain.Enumerations;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using AdministraAoImoveis.Web.Services;
 
 namespace AdministraAoImoveis.Web.Areas.PortalProprietario.Controllers;
 
@@ -19,15 +21,18 @@ public class HomeController : Controller
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<HomeController> _logger;
+    private readonly IAuditTrailService _auditTrailService;
 
     public HomeController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
-        ILogger<HomeController> logger)
+        ILogger<HomeController> logger,
+        IAuditTrailService auditTrailService)
     {
         _context = context;
         _userManager = userManager;
         _logger = logger;
+        _auditTrailService = auditTrailService;
     }
 
     [HttpGet]
@@ -89,6 +94,13 @@ public class HomeController : Controller
 
         _context.Mensagens.Add(mensagem);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await RegistrarAuditoriaMensagemAsync(
+            mensagem,
+            "CREATE",
+            string.Empty,
+            SerializeMensagem(mensagem),
+            cancellationToken);
 
         _logger.LogInformation(
             "Mensagem registrada no portal do proprietário para o imóvel {ImovelId} por {Usuario}.",
@@ -292,5 +304,55 @@ public class HomeController : Controller
             ManutencoesEmAberto = manutencoesAbertas,
             NegociacoesAtivas = negociacoesAtivas
         };
+    }
+
+    private async Task RegistrarAuditoriaMensagemAsync(
+        ContextMessage mensagem,
+        string operacao,
+        string antes,
+        string depois,
+        CancellationToken cancellationToken)
+    {
+        var usuario = User?.Identity?.Name ?? "Portal";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
+
+        await _auditTrailService.RegisterAsync(
+            "ContextMessage",
+            mensagem.Id,
+            operacao,
+            antes,
+            depois,
+            usuario,
+            ip,
+            host,
+            cancellationToken);
+    }
+
+    private static string SerializeMensagem(ContextMessage mensagem)
+    {
+        var payload = new
+        {
+            mensagem.Id,
+            mensagem.ContextoTipo,
+            mensagem.ContextoId,
+            mensagem.UsuarioId,
+            mensagem.Mensagem,
+            mensagem.EnviadaEm,
+            mensagem.CreatedAt,
+            mensagem.CreatedBy
+        };
+    }
+
+    private async Task<IReadOnlyCollection<PortalMessageViewModel>> LoadMessagesAsync(
+        IReadOnlyDictionary<Guid, string> propertyLookup,
+        CancellationToken cancellationToken)
+    {
+        if (propertyLookup.Count == 0)
+        {
+            return Array.Empty<PortalMessageViewModel>();
+        }
+
+        return JsonSerializer.Serialize(payload);
     }
 }

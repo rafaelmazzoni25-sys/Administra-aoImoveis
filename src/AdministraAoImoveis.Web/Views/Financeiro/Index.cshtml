@@ -25,6 +25,10 @@
                 <p>Status da negociação: <strong>@Model.Etapa</strong></p>
                 <p class="text-xs text-slate-500">@(Model.NegociacaoAtiva ? "Negociação ativa" : "Negociação encerrada")</p>
                 <a class="btn-secondary mt-2 inline-flex items-center justify-center" asp-controller="Negociacoes" asp-action="Index">Voltar para o quadro</a>
+                <div class="flex flex-wrap justify-end gap-2 mt-3">
+                    <a class="btn-secondary" asp-action="ExportarCsv" asp-route-negotiationId="@Model.NegociacaoId">Exportar CSV</a>
+                    <a class="btn-secondary" asp-action="ExportarHtml" asp-route-negotiationId="@Model.NegociacaoId">Versão imprimível</a>
+                </div>
             </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 text-sm">
