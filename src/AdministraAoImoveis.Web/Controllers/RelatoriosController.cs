@@ -49,7 +49,7 @@ public class RelatoriosController : Controller
             .Where(m => m.DataConclusao != null && m.DataConclusao >= start && m.DataConclusao <= end && m.CustoReal.HasValue)
             .ToListAsync(cancellationToken);
         var manutencoesComDatas = await _context.Manutencoes
-            .Where(m => m.DataConclusao != null && m.DataInicioExecucao != null && m.DataConclusao >= start && m.DataConclusao <= end)
+            .Where(m => m.DataConclusao != null && m.IniciadaEm != null && m.DataConclusao >= start && m.DataConclusao <= end)
             .ToListAsync(cancellationToken);
         var pendenciasCriticas = await _context.Atividades
             .CountAsync(a => a.Prioridade == PriorityLevel.Critica && !FinalStatuses.Contains(a.Status), cancellationToken);
@@ -91,7 +91,7 @@ public class RelatoriosController : Controller
             VacanciaPercentual = totalImoveis == 0 ? 0 : Math.Round((decimal)disponiveis / totalImoveis * 100, 2),
             TempoMedioNegociacaoDias = negociacoesPeriodo.Count == 0 ? 0 : negociacoesPeriodo.Average(n => (DateTime.UtcNow - n.CreatedAt).TotalDays),
             TempoMedioVistoriaDias = vistorias.Count == 0 ? 0 : vistorias.Average(v => (v.Fim!.Value - v.Inicio!.Value).TotalDays),
-            TempoMedioManutencaoDias = manutencoesComDatas.Count == 0 ? 0 : manutencoesComDatas.Average(m => (m.DataConclusao!.Value - m.DataInicioExecucao!.Value).TotalDays),
+            TempoMedioManutencaoDias = manutencoesComDatas.Count == 0 ? 0 : manutencoesComDatas.Average(m => (m.DataConclusao!.Value - m.IniciadaEm!.Value).TotalDays),
             CustoManutencaoPeriodo = manutencoes.Sum(m => m.CustoReal ?? 0),
             PendenciasCriticasAbertas = pendenciasCriticas,
             FinanceiroPendente = financeiro.Where(f => f.Status == FinancialStatus.Pendente).Sum(f => f.Valor),
