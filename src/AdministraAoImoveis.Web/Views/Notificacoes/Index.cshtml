@@ -1,0 +1,68 @@
+@model NotificationListViewModel
+@{
+    ViewData["Title"] = "Notificações";
+}
+
+<section class="space-y-6">
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <div>
+            <h2 class="text-2xl font-semibold text-slate-800">Notificações internas</h2>
+            <p class="text-sm text-slate-500">Acompanhe alertas de agenda, menções e demais eventos do sistema.</p>
+        </div>
+        <form asp-action="MarcarTodas" method="post" class="inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn-secondary">Marcar todas como lidas</button>
+        </form>
+    </header>
+
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success">@success</div>
+    }
+
+    <div class="card">
+        <div class="flex justify-between items-center mb-4">
+            <span class="text-sm text-slate-600">Total de notificações não lidas: <strong>@Model.TotalNaoLidas</strong></span>
+        </div>
+
+        @if (!Model.Notificacoes.Any())
+        {
+            <p class="text-sm text-slate-500">Nenhuma notificação registrada.</p>
+        }
+        else
+        {
+            <ul class="notification-list">
+                @foreach (var notificacao in Model.Notificacoes)
+                {
+                    <li class="notification-item @(notificacao.Lida ? "notification-read" : string.Empty)">
+                        <div class="notification-content">
+                            <header>
+                                <h3>@notificacao.Titulo</h3>
+                                <time datetime="@notificacao.CreatedAt.ToString("O")">@notificacao.CreatedAt:dd/MM/yyyy HH:mm</time>
+                            </header>
+                            <p>@notificacao.Mensagem</p>
+                            <footer class="flex items-center gap-2">
+                                @if (!string.IsNullOrWhiteSpace(notificacao.LinkDestino))
+                                {
+                                    <a class="btn-link" href="@notificacao.LinkDestino">Abrir</a>
+                                }
+                                @if (notificacao.Lida)
+                                {
+                                    <span class="text-xs text-slate-500">Lida em @notificacao.LidaEm:dd/MM/yyyy HH:mm</span>
+                                }
+                            </footer>
+                        </div>
+                        @if (!notificacao.Lida)
+                        {
+                            <form asp-action="MarcarComoLida" method="post" class="notification-action">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@notificacao.Id" />
+                                <button type="submit" class="btn btn-primary">Marcar como lida</button>
+                            </form>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</section>

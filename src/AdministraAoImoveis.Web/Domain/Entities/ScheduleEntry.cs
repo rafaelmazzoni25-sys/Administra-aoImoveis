@@ -4,6 +4,7 @@ public class ScheduleEntry : BaseEntity
 {
     public string Titulo { get; set; } = string.Empty;
     public string Tipo { get; set; } = string.Empty;
+    public string Setor { get; set; } = string.Empty;
     public DateTime Inicio { get; set; }
     public DateTime Fim { get; set; }
     public string Responsavel { get; set; } = string.Empty;

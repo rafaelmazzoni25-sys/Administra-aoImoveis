@@ -1,0 +1,104 @@
+@model ScheduleEntryFormViewModel
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Editar compromisso" : "Novo compromisso";
+}
+
+<section class="space-y-4 max-w-3xl">
+    <header>
+        <h2 class="text-2xl font-semibold text-slate-800">@ViewData["Title"]</h2>
+        <p class="text-sm text-slate-500">Os bloqueios de agenda evitam conflitos de vistoria, visitas e tarefas críticas.</p>
+    </header>
+
+    <form asp-action="@(Model.Id.HasValue ? "Edit" : "Create")" method="post" class="space-y-6">
+        @Html.AntiForgeryToken()
+        @if (Model.Id.HasValue)
+        {
+            <input type="hidden" asp-for="Id" />
+        }
+
+        <div asp-validation-summary="ModelOnly" class="alert alert-error"></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label asp-for="Titulo" class="input-label"></label>
+                <input asp-for="Titulo" class="input" />
+                <span asp-validation-for="Titulo" class="input-validation"></span>
+            </div>
+            <div>
+                <label asp-for="Tipo" class="input-label"></label>
+                <input asp-for="Tipo" class="input" />
+                <span asp-validation-for="Tipo" class="input-validation"></span>
+            </div>
+            <div>
+                <label asp-for="Setor" class="input-label"></label>
+                <input asp-for="Setor" class="input" />
+            </div>
+            <div>
+                <label asp-for="Responsavel" class="input-label"></label>
+                <input asp-for="Responsavel" class="input" />
+            </div>
+            <div>
+                <label asp-for="Inicio" class="input-label"></label>
+                <input asp-for="Inicio" class="input" type="datetime-local" value="@Model.Inicio.ToLocalTime().ToString("yyyy-MM-ddTHH:mm")" />
+                <span asp-validation-for="Inicio" class="input-validation"></span>
+            </div>
+            <div>
+                <label asp-for="Fim" class="input-label"></label>
+                <input asp-for="Fim" class="input" type="datetime-local" value="@Model.Fim.ToLocalTime().ToString("yyyy-MM-ddTHH:mm")" />
+                <span asp-validation-for="Fim" class="input-validation"></span>
+            </div>
+            <div>
+                <label asp-for="ImovelId" class="input-label"></label>
+                <select asp-for="ImovelId" class="input">
+                    <option value="">--</option>
+                    @foreach (var imovel in Model.Imoveis)
+                    {
+                        <option value="@imovel.Id" selected="@(Model.ImovelId == imovel.Id)">@imovel.Codigo</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label asp-for="NegociacaoId" class="input-label"></label>
+                <select asp-for="NegociacaoId" class="input">
+                    <option value="">--</option>
+                    @foreach (var negociacao in Model.Negociacoes)
+                    {
+                        <option value="@negociacao.Id" selected="@(Model.NegociacaoId == negociacao.Id)">Negociação @negociacao.Nome</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label asp-for="VistoriaId" class="input-label"></label>
+                <select asp-for="VistoriaId" class="input">
+                    <option value="">--</option>
+                    @foreach (var vistoria in Model.Vistorias)
+                    {
+                        <option value="@vistoria.Id" selected="@(Model.VistoriaId == vistoria.Id)">@vistoria.Descricao</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <label asp-for="Observacoes" class="input-label"></label>
+            <textarea asp-for="Observacoes" class="input" rows="4"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2">
+            <a class="btn-secondary" asp-action="Index">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Salvar</button>
+        </div>
+    </form>
+    @if (Model.Id.HasValue)
+    {
+        <form id="delete-form" asp-action="Delete" method="post" class="inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button type="submit" class="btn btn-danger">Remover compromisso</button>
+        </form>
+    }
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

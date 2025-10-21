@@ -2,7 +2,46 @@
 @{
     ViewData["Title"] = "Pendências e Tarefas";
 }
+
+@functions {
+    private static string FormatDuration(TimeSpan tempo)
+    {
+        var valor = tempo.Duration();
+        if (valor.TotalDays >= 1)
+        {
+            return $"{valor.Days}d {valor.Hours}h";
+        }
+
+        if (valor.TotalHours >= 1)
+        {
+            return $"{valor.Hours}h {valor.Minutes}min";
+        }
+
+        if (valor.TotalMinutes >= 1)
+        {
+            return $"{valor.Minutes}min";
+        }
+
+        return $"{valor.Seconds}s";
+    }
+
+    private static string FormatRemaining(ActivityListItemViewModel item)
+    {
+        if (!item.TempoRestante.HasValue)
+        {
+            return "Sem prazo definido";
+        }
+
+        var prefixo = item.TempoRestante.Value.TotalSeconds < 0 ? "Atrasada há " : "Restam ";
+        return prefixo + FormatDuration(item.TempoRestante.Value);
+    }
+}
+
 <section class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-semibold text-slate-800">Pendências e tarefas</h2>
+        <a class="btn btn-primary" asp-action="Prioridades">Ver matriz de prioridades</a>
+    </div>
     <form method="get" class="bg-white p-4 rounded shadow grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
             <label class="label" for="status">Status</label>
@@ -10,7 +49,7 @@
                 <option value="">Todos</option>
                 @foreach (var status in Enum.GetValues<AdministraAoImoveis.Web.Domain.Enumerations.ActivityStatus>())
                 {
-                    <option value="@status" selected="@(Model.Status == status)">@status</option>
+                    <option value="@status" selected="@(Model.Status == status ? "selected" : null)">@status</option>
                 }
             </select>
         </div>
@@ -20,7 +59,7 @@
                 <option value="">Todas</option>
                 @foreach (var prioridade in Enum.GetValues<AdministraAoImoveis.Web.Domain.Enumerations.PriorityLevel>())
                 {
-                    <option value="@prioridade" selected="@(Model.Prioridade == prioridade)">@prioridade</option>
+                    <option value="@prioridade" selected="@(Model.Prioridade == prioridade ? "selected" : null)">@prioridade</option>
                 }
             </select>
         </div>
@@ -33,30 +72,83 @@
         </div>
     </form>
 
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <article class="card bg-slate-800 text-white">
+            <p class="text-xs uppercase tracking-wide">Total</p>
+            <p class="text-3xl font-semibold">@Model.Total</p>
+        </article>
+        @foreach (var status in Enum.GetValues<AdministraAoImoveis.Web.Domain.Enumerations.ActivityStatus>())
+        {
+            var total = Model.TotaisPorStatus.TryGetValue(status, out var valor) ? valor : 0;
+            <article class="card">
+                <p class="text-xs uppercase tracking-wide text-slate-500">@status</p>
+                <p class="text-2xl font-semibold">@total</p>
+            </article>
+        }
+        <article class="card border-l-4 border-amber-400">
+            <p class="text-xs uppercase tracking-wide text-amber-600">Em risco (&lt; 24h)</p>
+            <p class="text-2xl font-semibold">@Model.TotalEmRisco</p>
+        </article>
+        <article class="card border-l-4 border-red-500">
+            <p class="text-xs uppercase tracking-wide text-red-600">Atrasadas</p>
+            <p class="text-2xl font-semibold">@Model.TotalAtrasadas</p>
+        </article>
+    </div>
+
     <div class="space-y-3">
-        @if (!Model.Atividades.Any())
+        @if (!Model.Itens.Any())
         {
             <div class="empty-state">Nenhuma atividade encontrada.</div>
         }
         else
         {
-            foreach (var atividade in Model.Atividades)
+            foreach (var item in Model.Itens)
             {
-                <article class="card">
-                    <header class="flex justify-between text-sm">
+                var atividade = item.Activity;
+                var cardClass = item.EstaAtrasada
+                    ? "border-l-4 border-red-500"
+                    : item.EmRisco
+                        ? "border-l-4 border-amber-400"
+                        : "border border-slate-200";
+                <article class=$"card space-y-3 {cardClass}">
+                    <header class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                         <div>
-                            <h3 class="card-title">@atividade.Titulo</h3>
-                            <p class="text-xs text-slate-500">@atividade.Descricao</p>
+                            <h3 class="card-title"><a class="hover:underline" asp-action="Details" asp-route-id="@atividade.Id">@atividade.Titulo</a></h3>
+                            <p class="text-sm text-slate-500">@atividade.Descricao</p>
                         </div>
-                        <div class="text-right text-xs">
-                            <p class="font-semibold">@atividade.Prioridade</p>
-                            <p>@atividade.Status</p>
-                            <p>Responsável: @atividade.Responsavel</p>
+                        <div class="text-sm text-right space-y-1">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs">@atividade.Status</span>
+                            <div>
+                                <span class="font-semibold">@atividade.Prioridade</span>
+                            </div>
+                            <div>Responsável: <span class="font-medium">@atividade.Responsavel</span></div>
+                            <div>Setor: <span class="font-medium">@atividade.Setor</span></div>
                         </div>
                     </header>
-                    <footer class="mt-3 text-xs text-slate-500 flex justify-between">
-                        <span>SLA: @(atividade.DataLimite?.ToString("dd/MM/yyyy") ?? "--")</span>
-                        <span>Vínculo: @atividade.VinculoTipo - @atividade.VinculoId</span>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex flex-wrap gap-4 text-xs text-slate-500">
+                            <span>@FormatRemaining(item)</span>
+                            @if (atividade.DataLimite.HasValue)
+                            {
+                                <span>Prazo: @atividade.DataLimite.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            }
+                            <span>Comentários: @item.Comentarios</span>
+                            <span>Anexos: @item.Anexos</span>
+                        </div>
+                        <div>
+                            @{
+                                var percentual = Math.Clamp(item.PercentualSlaConsumido, 0, 100);
+                                var barraClasse = item.EstaAtrasada ? "bg-red-500" : item.EmRisco ? "bg-amber-400" : "bg-emerald-500";
+                                var percentualTexto = $"{percentual:F0}%";
+                            }
+                            <div class="h-2 bg-slate-200 rounded">
+                                <div class="h-2 rounded @barraClasse" style="width:@percentualTexto"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">Consumo de SLA: @item.PercentualSlaConsumido:F0%</p>
+                        </div>
+                    </div>
+                    <footer class="flex justify-end">
+                        <a class="btn-secondary" asp-action="Details" asp-route-id="@atividade.Id">Abrir detalhes</a>
                     </footer>
                 </article>
             }

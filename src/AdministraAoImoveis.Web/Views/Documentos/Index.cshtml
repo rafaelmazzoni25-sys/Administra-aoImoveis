@@ -1,0 +1,291 @@
+@model PropertyDocumentLibraryViewModel
+@using AdministraAoImoveis.Web.Domain.Enumerations
+@{
+    ViewData["Title"] = "Documentos do Imóvel";
+}
+
+@functions {
+    private static string GetStatusClass(DocumentStatus status)
+    {
+        return status switch
+        {
+            DocumentStatus.Aprovado => "bg-emerald-100 text-emerald-700",
+            DocumentStatus.Rejeitado => "bg-red-100 text-red-700",
+            DocumentStatus.Expirado => "bg-amber-100 text-amber-700",
+            DocumentStatus.Obsoleto => "bg-slate-100 text-slate-600",
+            _ => "bg-blue-100 text-blue-700"
+        };
+    }
+
+    private static string GetAcceptanceLabel(DocumentAcceptanceType tipo)
+    {
+        return tipo switch
+        {
+            DocumentAcceptanceType.Geracao => "Geração",
+            DocumentAcceptanceType.Validacao => "Validação",
+            DocumentAcceptanceType.Assinatura => "Assinatura",
+            _ => tipo.ToString()
+        };
+    }
+}
+
+<section class="space-y-6">
+    <header class="card">
+        <h2 class="card-title">Biblioteca de documentos</h2>
+        <p class="text-sm text-slate-500">@Model.CodigoInterno - @Model.Titulo</p>
+        <p class="text-xs text-slate-500">@Model.Endereco</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+            <a class="btn-secondary" asp-controller="Imoveis" asp-action="Details" asp-route-id="@Model.ImovelId">Voltar para o imóvel</a>
+        </div>
+    </header>
+
+    @if (TempData["Error"] is string errorMessage)
+    {
+        <div class="alert alert-error">@errorMessage</div>
+    }
+
+    @if (TempData["Success"] is string successMessage)
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
+    @if (Model.ModelosDisponiveis.Any())
+    {
+        <section class="card">
+            <h3 class="card-title">Gerar modelo interno</h3>
+            <form method="post" asp-action="GerarModelo" asp-route-propertyId="@Model.ImovelId" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                @Html.AntiForgeryToken()
+                <div class="md:col-span-2">
+                    <label class="label" for="modelo">Modelo</label>
+                    <select class="input" id="modelo" name="tipo">
+                        @foreach (var modelo in Model.ModelosDisponiveis)
+                        {
+                            <option value="@modelo.Valor">@modelo.Descricao</option>
+                        }
+                    </select>
+                </div>
+                <div class="flex items-end justify-end">
+                    <button class="btn-secondary" type="submit">Gerar HTML</button>
+                </div>
+            </form>
+        </section>
+    }
+
+    <section class="card">
+        <h3 class="card-title">Novo upload</h3>
+        <form method="post" enctype="multipart/form-data" asp-action="Upload" asp-route-propertyId="@Model.ImovelId" class="space-y-4">
+            @Html.AntiForgeryToken()
+            <div>
+                <label class="label" asp-for="Upload.Descricao"></label>
+                <input class="input" asp-for="Upload.Descricao" />
+                <span class="text-sm text-red-600" asp-validation-for="Upload.Descricao"></span>
+            </div>
+            <div>
+                <label class="label" asp-for="Upload.Arquivo"></label>
+                <input class="input" type="file" asp-for="Upload.Arquivo" />
+                <span class="text-sm text-red-600" asp-validation-for="Upload.Arquivo"></span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label" asp-for="Upload.ValidoAte"></label>
+                    <input class="input" asp-for="Upload.ValidoAte" type="date" />
+                    <span class="text-sm text-red-600" asp-validation-for="Upload.ValidoAte"></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input class="input-checkbox" asp-for="Upload.RequerAceiteProprietario" />
+                    <label class="label" asp-for="Upload.RequerAceiteProprietario"></label>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <input class="input-checkbox" asp-for="Upload.AprovarAutomaticamente" />
+                <label class="label" asp-for="Upload.AprovarAutomaticamente"></label>
+            </div>
+            <div>
+                <label class="label" asp-for="Upload.Observacoes"></label>
+                <textarea class="input" asp-for="Upload.Observacoes" rows="3"></textarea>
+                <span class="text-sm text-red-600" asp-validation-for="Upload.Observacoes"></span>
+            </div>
+            <div class="flex justify-end">
+                <button class="btn-primary" type="submit">Enviar documento</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card space-y-4">
+        <h3 class="card-title">Documentos cadastrados</h3>
+        @if (!Model.Grupos.Any())
+        {
+            <p class="empty-state">Nenhum documento cadastrado até o momento.</p>
+        }
+        else
+        {
+            foreach (var grupo in Model.Grupos)
+            {
+                <article class="border border-slate-200 rounded-lg p-4 space-y-4">
+                    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                            <h4 class="text-lg font-semibold">@grupo.Descricao</h4>
+                            @if (grupo.VersaoAtual is not null)
+                            {
+                                <p class="text-xs text-slate-500">Versão atual v@grupo.VersaoAtual.Versao - enviada em @grupo.VersaoAtual.CreatedAt:dd/MM/yyyy HH:mm</p>
+                            }
+                        </div>
+                        @if (grupo.VersaoAtual is not null)
+                        {
+                            var statusClass = GetStatusClass(grupo.VersaoAtual.Status);
+                            <span class=$"inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {statusClass}">@grupo.VersaoAtual.Status</span>
+                        }
+                    </header>
+
+                    @if (grupo.VersaoAtual is not null)
+                    {
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                            <div>
+                                <span class="text-slate-500">Responsável</span>
+                                <p class="font-medium">@grupo.VersaoAtual.CreatedBy</p>
+                            </div>
+                            <div>
+                                <span class="text-slate-500">Validade</span>
+                                <p class="font-medium">@(grupo.VersaoAtual.ValidoAte?.ToString("dd/MM/yyyy") ?? "Sem validade")</p>
+                                @if (grupo.VersaoAtual.Expirado)
+                                {
+                                    <p class="text-xs text-red-600">Documento expirado</p>
+                                }
+                            </div>
+                            <div>
+                                <span class="text-slate-500">Requer aceite do proprietário</span>
+                                <p class="font-medium">@(grupo.VersaoAtual.RequerAceiteProprietario ? "Sim" : "Não")</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <a class="btn-secondary" asp-action="Download" asp-route-propertyId="@Model.ImovelId" asp-route-documentId="@grupo.VersaoAtual.Id">Download</a>
+                            @if (grupo.VersaoAtual.Status == DocumentStatus.Pendente)
+                            {
+                                <form asp-action="Review" asp-route-propertyId="@Model.ImovelId" asp-route-documentId="@grupo.VersaoAtual.Id" method="post" class="inline-flex gap-2 items-center">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="Aprovar" value="true" />
+                                    <button class="btn-primary" type="submit">Aprovar</button>
+                                </form>
+                                <form asp-action="Review" asp-route-propertyId="@Model.ImovelId" asp-route-documentId="@grupo.VersaoAtual.Id" method="post" class="flex flex-wrap items-center gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="Aprovar" value="false" />
+                                    <input class="input" type="text" name="Comentario" placeholder="Motivo da rejeição" required />
+                                    <button class="btn-danger" type="submit">Rejeitar</button>
+                                </form>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(grupo.VersaoAtual.Observacoes))
+                        {
+                            <p class="text-sm text-slate-600"><strong>Observações:</strong> @grupo.VersaoAtual.Observacoes</p>
+                        }
+
+                        <section class="space-y-3">
+                            <h4 class="text-sm font-semibold text-slate-700">Aceites registrados</h4>
+                            @if (!grupo.VersaoAtual.Aceites.Any())
+                            {
+                                <p class="text-xs text-slate-500">Nenhum aceite registrado para esta versão.</p>
+                            }
+                            else
+                            {
+                                <ul class="divide-y divide-slate-200 text-sm">
+                                    @foreach (var aceite in grupo.VersaoAtual.Aceites)
+                                    {
+                                        <li class="py-2">
+                                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                                <span><strong>@GetAcceptanceLabel(aceite.Tipo)</strong> - @aceite.Nome (@aceite.Cargo)</span>
+                                                <span class="text-xs text-slate-500">@aceite.RegistradoEm.ToLocalTime():dd/MM/yyyy HH:mm - @aceite.UsuarioSistema</span>
+                                            </div>
+                                            <p class="text-[11px] text-slate-400">IP: @aceite.Ip | Host: @aceite.Host</p>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <form asp-action="RegistrarAceite" asp-route-propertyId="@Model.ImovelId" asp-route-documentId="@grupo.VersaoAtual.Id" method="post" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                                @Html.AntiForgeryToken()
+                                <div>
+                                    <label class="label" for="tipo-@grupo.VersaoAtual.Id">Tipo</label>
+                                    <select class="input" id="tipo-@grupo.VersaoAtual.Id" name="Tipo">
+                                        @foreach (var tipo in Enum.GetValues<DocumentAcceptanceType>())
+                                        {
+                                            <option value="@tipo">@GetAcceptanceLabel(tipo)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="label" for="nome-@grupo.VersaoAtual.Id">Nome</label>
+                                    <input class="input" id="nome-@grupo.VersaoAtual.Id" name="Nome" required />
+                                </div>
+                                <div>
+                                    <label class="label" for="cargo-@grupo.VersaoAtual.Id">Cargo</label>
+                                    <input class="input" id="cargo-@grupo.VersaoAtual.Id" name="Cargo" />
+                                </div>
+                                <div class="flex justify-end">
+                                    <button class="btn-secondary" type="submit">Registrar aceite</button>
+                                </div>
+                            </form>
+                        </section>
+                    }
+
+                    @if (grupo.Historico.Any())
+                    {
+                        <details class="border border-dashed border-slate-200 rounded p-3">
+                            <summary class="cursor-pointer text-sm font-medium">Histórico de versões</summary>
+                            <div class="mt-3 overflow-x-auto">
+                                <table class="table text-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Versão</th>
+                                            <th>Status</th>
+                                            <th>Enviado em</th>
+                                            <th>Validade</th>
+                                            <th>Revisado em</th>
+                                            <th>Observações</th>
+                                            <th>Aceites</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var versao in grupo.Historico)
+                                        {
+                                            var statusClass = GetStatusClass(versao.Status);
+                                            <tr>
+                                                <td>v@versao.Versao</td>
+                                                <td><span class=$"inline-flex px-2 py-1 rounded-full text-xs font-semibold {statusClass}">@versao.Status</span></td>
+                                                <td>@versao.CreatedAt:dd/MM/yyyy HH:mm</td>
+                                                <td>@(versao.ValidoAte?.ToString("dd/MM/yyyy") ?? "-")</td>
+                                                <td>@(versao.RevisadoEm?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                                <td>@(string.IsNullOrWhiteSpace(versao.Observacoes) ? "-" : versao.Observacoes)</td>
+                                                <td>
+                                                    @if (!versao.Aceites.Any())
+                                                    {
+                                                        <span class="text-xs text-slate-400">Nenhum</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <ul class="text-xs space-y-1">
+                                                            @foreach (var aceite in versao.Aceites)
+                                                            {
+                                                                <li><strong>@GetAcceptanceLabel(aceite.Tipo)</strong> - @aceite.Nome (@aceite.RegistradoEm.ToLocalTime():dd/MM HH:mm)</li>
+                                                            }
+                                                        </ul>
+                                                    }
+                                                </td>
+                                                <td class="text-right">
+                                                    <a class="text-sm text-blue-600 hover:underline" asp-action="Download" asp-route-propertyId="@Model.ImovelId" asp-route-documentId="@versao.Id">Download</a>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    }
+                </article>
+            }
+        }
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
