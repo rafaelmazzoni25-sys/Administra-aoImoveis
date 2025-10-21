@@ -678,6 +678,18 @@ public class HomeController : Controller
             evento.CreatedAt,
             evento.CreatedBy
         };
+    }
+
+    private async Task<IReadOnlyCollection<PortalMessageViewModel>> LoadMessagesAsync(
+        IReadOnlyDictionary<Guid, string> negotiationLookup,
+        CancellationToken cancellationToken)
+    {
+        if (negotiationLookup.Count == 0)
+        {
+            return Array.Empty<PortalMessageViewModel>();
+        }
+
+        var negotiationIds = negotiationLookup.Keys.ToArray();
 
         return JsonSerializer.Serialize(payload);
     }

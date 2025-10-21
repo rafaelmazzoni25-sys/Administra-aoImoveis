@@ -342,6 +342,16 @@ public class HomeController : Controller
             mensagem.CreatedAt,
             mensagem.CreatedBy
         };
+    }
+
+    private async Task<IReadOnlyCollection<PortalMessageViewModel>> LoadMessagesAsync(
+        IReadOnlyDictionary<Guid, string> propertyLookup,
+        CancellationToken cancellationToken)
+    {
+        if (propertyLookup.Count == 0)
+        {
+            return Array.Empty<PortalMessageViewModel>();
+        }
 
         return JsonSerializer.Serialize(payload);
     }
