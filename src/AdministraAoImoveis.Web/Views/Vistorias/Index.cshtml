@@ -3,6 +3,10 @@
     ViewData["Title"] = "Vistorias";
 }
 <section class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-semibold text-slate-800">Agenda de vistorias</h2>
+        <a class="btn btn-primary" asp-action="Create">Agendar vistoria</a>
+    </div>
     <form method="get" class="bg-white p-4 rounded shadow grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
             <label class="label" for="status">Status</label>
@@ -54,9 +58,20 @@
                         <tr>
                             <td>@vistoria.Imovel?.CodigoInterno</td>
                             <td>@vistoria.Tipo</td>
-                            <td>@vistoria.Status</td>
+                            <td>
+                                <span class="inline-flex items-center gap-2">
+                                    <span>@vistoria.Status</span>
+                                    @if (vistoria.Status == AdministraAoImoveis.Web.Domain.Enumerations.InspectionStatus.RelatorioPendente)
+                                    {
+                                        <span class="badge badge-warning">Relatório pendente</span>
+                                    }
+                                </span>
+                            </td>
                             <td>@vistoria.AgendadaPara:dd/MM/yyyy HH:mm</td>
-                            <td>@vistoria.Responsavel</td>
+                            <td class="flex flex-col gap-1">
+                                <span>@vistoria.Responsavel</span>
+                                <a class="link" asp-action="Details" asp-route-id="@vistoria.Id">detalhes</a>
+                            </td>
                         </tr>
                     }
                 }
