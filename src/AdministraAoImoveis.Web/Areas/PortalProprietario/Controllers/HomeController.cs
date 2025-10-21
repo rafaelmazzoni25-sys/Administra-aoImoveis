@@ -111,6 +111,241 @@ public class HomeController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AceitarDocumento(Guid documentoId, CancellationToken cancellationToken)
+    {
+        var userId = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Challenge();
+        }
+
+        var documento = await LoadOwnerDocumentAsync(documentoId, userId, cancellationToken);
+        if (documento is null)
+        {
+            return NotFound();
+        }
+
+        if (!documento.RequerAceiteProprietario)
+        {
+            TempData["Error"] = "Este documento não requer aceite do proprietário.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (documento.Aceites.Any(a => a.Tipo == DocumentAcceptanceType.Assinatura))
+        {
+            TempData["Info"] = "O documento já foi aceito anteriormente.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (documento.Aceites.Any(a => a.Tipo == DocumentAcceptanceType.Recusa))
+        {
+            TempData["Error"] = "Não é possível aceitar um documento que já foi recusado.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var ownerName = string.IsNullOrWhiteSpace(documento.Imovel?.Proprietario?.Nome)
+            ? User?.Identity?.Name ?? "Proprietário"
+            : documento.Imovel!.Proprietario!.Nome;
+
+        var usuarioSistema = User?.Identity?.Name ?? ownerName;
+        var agora = DateTime.UtcNow;
+        var antes = SerializeDocumentoForAudit(documento);
+        var aceite = new PropertyDocumentAcceptance
+        {
+            DocumentoId = documento.Id,
+            Tipo = DocumentAcceptanceType.Assinatura,
+            Nome = ownerName,
+            Cargo = "Proprietário",
+            UsuarioSistema = usuarioSistema,
+            Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            Host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty,
+            CreatedBy = usuarioSistema,
+            RegistradoEm = agora
+        };
+
+        documento.Aceites.Add(aceite);
+        documento.UpdatedAt = agora;
+        documento.UpdatedBy = usuarioSistema;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var depois = SerializeDocumentoForAudit(documento);
+        await RegistrarAuditoriaDocumentoAsync(documento, "ACCEPTANCE_REGISTER", antes, depois, cancellationToken);
+        await RegistrarAuditoriaAceiteAsync(aceite, "CREATE", cancellationToken);
+
+        _logger.LogInformation(
+            "Documento {DocumentoId} aceito pelo proprietário {Proprietario}.",
+            documento.Id,
+            ownerName);
+
+        TempData["Success"] = "Aceite registrado com sucesso.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RecusarDocumento(Guid documentoId, CancellationToken cancellationToken)
+    {
+        var userId = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Challenge();
+        }
+
+        var documento = await LoadOwnerDocumentAsync(documentoId, userId, cancellationToken);
+        if (documento is null)
+        {
+            return NotFound();
+        }
+
+        if (!documento.RequerAceiteProprietario)
+        {
+            TempData["Error"] = "Este documento não requer aceite do proprietário.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (documento.Aceites.Any(a => a.Tipo == DocumentAcceptanceType.Recusa))
+        {
+            TempData["Info"] = "A recusa deste documento já foi registrada.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (documento.Aceites.Any(a => a.Tipo == DocumentAcceptanceType.Assinatura))
+        {
+            TempData["Error"] = "Documento já aceito não pode ser recusado.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var ownerName = string.IsNullOrWhiteSpace(documento.Imovel?.Proprietario?.Nome)
+            ? User?.Identity?.Name ?? "Proprietário"
+            : documento.Imovel!.Proprietario!.Nome;
+
+        var usuarioSistema = User?.Identity?.Name ?? ownerName;
+        var agora = DateTime.UtcNow;
+        var antes = SerializeDocumentoForAudit(documento);
+        var aceite = new PropertyDocumentAcceptance
+        {
+            DocumentoId = documento.Id,
+            Tipo = DocumentAcceptanceType.Recusa,
+            Nome = ownerName,
+            Cargo = "Proprietário",
+            UsuarioSistema = usuarioSistema,
+            Ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+            Host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty,
+            CreatedBy = usuarioSistema,
+            RegistradoEm = agora
+        };
+
+        documento.Aceites.Add(aceite);
+        documento.UpdatedAt = agora;
+        documento.UpdatedBy = usuarioSistema;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var depois = SerializeDocumentoForAudit(documento);
+        await RegistrarAuditoriaDocumentoAsync(documento, "ACCEPTANCE_REJECT", antes, depois, cancellationToken);
+        await RegistrarAuditoriaAceiteAsync(aceite, "CREATE", cancellationToken);
+
+        _logger.LogInformation(
+            "Documento {DocumentoId} recusado pelo proprietário {Proprietario}.",
+            documento.Id,
+            ownerName);
+
+        TempData["Success"] = "Recusa registrada com sucesso.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task<PropertyDocument?> LoadOwnerDocumentAsync(Guid documentoId, string userId, CancellationToken cancellationToken)
+    {
+        return await _context.PropertyDocuments
+            .Include(d => d.Imovel)
+                .ThenInclude(i => i.Proprietario)
+            .Include(d => d.Aceites)
+            .FirstOrDefaultAsync(
+                d => d.Id == documentoId
+                    && d.Imovel != null
+                    && d.Imovel.Proprietario != null
+                    && d.Imovel.Proprietario.UsuarioId == userId,
+                cancellationToken);
+    }
+
+    private async Task RegistrarAuditoriaDocumentoAsync(
+        PropertyDocument documento,
+        string operacao,
+        string antes,
+        string depois,
+        CancellationToken cancellationToken)
+    {
+        var usuario = User?.Identity?.Name ?? "Portal";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
+
+        await _auditTrailService.RegisterAsync(
+            "PropertyDocument",
+            documento.Id,
+            operacao,
+            antes ?? string.Empty,
+            depois ?? string.Empty,
+            usuario,
+            ip,
+            host,
+            cancellationToken);
+    }
+
+    private async Task RegistrarAuditoriaAceiteAsync(
+        PropertyDocumentAcceptance aceite,
+        string operacao,
+        CancellationToken cancellationToken)
+    {
+        var usuario = User?.Identity?.Name ?? "Portal";
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var host = HttpContext.Connection.LocalIpAddress?.ToString() ?? string.Empty;
+        var payload = JsonSerializer.Serialize(aceite);
+
+        await _auditTrailService.RegisterAsync(
+            "PropertyDocumentAcceptance",
+            aceite.Id,
+            operacao,
+            string.Empty,
+            payload,
+            usuario,
+            ip,
+            host,
+            cancellationToken);
+    }
+
+    private static string SerializeDocumentoForAudit(PropertyDocument documento)
+    {
+        var payload = new
+        {
+            documento.Id,
+            documento.ImovelId,
+            documento.Status,
+            documento.RequerAceiteProprietario,
+            documento.UpdatedAt,
+            documento.UpdatedBy,
+            Aceites = documento.Aceites
+                .OrderBy(a => a.RegistradoEm)
+                .Select(a => new
+                {
+                    a.Id,
+                    a.Tipo,
+                    a.Nome,
+                    a.Cargo,
+                    a.UsuarioSistema,
+                    a.Ip,
+                    a.Host,
+                    a.RegistradoEm,
+                    a.CreatedAt,
+                    a.CreatedBy
+                })
+        };
+
+        return JsonSerializer.Serialize(payload);
+    }
+
     private async Task<OwnerPortalViewModel?> BuildDashboardAsync(
         string userId,
         CancellationToken cancellationToken,
@@ -132,6 +367,7 @@ public class HomeController : Controller
                 .ThenInclude(i => i.Atividades)
             .Include(p => p.Imoveis)
                 .ThenInclude(i => i.Documentos)
+                    .ThenInclude(d => d.Aceites)
             .FirstOrDefaultAsync(p => p.UsuarioId == userId, cancellationToken);
 
         if (owner is null)
@@ -149,7 +385,9 @@ public class HomeController : Controller
 
         var documentosPendentes = owner.Imoveis
             .SelectMany(i => i.Documentos)
-            .Where(d => d.RequerAceiteProprietario && (d.Status == DocumentStatus.Pendente || d.Status == DocumentStatus.Expirado))
+            .Where(d => d.RequerAceiteProprietario)
+            .Where(d => d.Status is DocumentStatus.Pendente or DocumentStatus.Aprovado or DocumentStatus.Expirado)
+            .Where(d => !d.Aceites.Any(a => a.Tipo == DocumentAcceptanceType.Assinatura || a.Tipo == DocumentAcceptanceType.Recusa))
             .OrderBy(d => d.Imovel?.CodigoInterno)
             .ThenByDescending(d => d.Versao)
             .Select(d => new OwnerDocumentSummaryViewModel
