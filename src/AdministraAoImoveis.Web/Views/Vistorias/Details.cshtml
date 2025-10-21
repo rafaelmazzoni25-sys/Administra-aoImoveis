@@ -1,0 +1,119 @@
+@model InspectionFormViewModel
+@using AdministraAoImoveis.Web.Domain.Enumerations
+@{
+    ViewData["Title"] = "Detalhes da vistoria";
+    var imovelCodigo = Model.Imoveis.FirstOrDefault(i => i.Id == Model.ImovelId).Codigo;
+}
+
+<section class="space-y-6 max-w-4xl">
+    <header class="card space-y-2">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+                <h2 class="card-title">Vistoria @Model.Tipo</h2>
+                <p class="text-sm text-slate-500">Imóvel: @(string.IsNullOrWhiteSpace(imovelCodigo) ? Model.ImovelId.ToString() : imovelCodigo)</p>
+            </div>
+            <div class="flex gap-2">
+                <a class="btn-secondary" asp-action="Edit" asp-route-id="@Model.Id">Editar agendamento</a>
+                <a class="btn-secondary" asp-action="Index">Voltar</a>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+            <div>Agendada para: <strong>@Model.AgendadaPara.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong></div>
+            <div>Responsável: <strong>@Model.Responsavel</strong></div>
+            <div>Status atual: <strong>@Model.Status</strong></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            <div>Início: <strong>@(Model.Inicio?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</strong></div>
+            <div>Fim: <strong>@(Model.Fim?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</strong></div>
+        </div>
+    </header>
+
+    <section class="card space-y-4">
+        <h3 class="card-title">Checklist e observações</h3>
+        <pre class="bg-slate-900 text-slate-100 text-xs p-4 rounded overflow-x-auto">@Model.ChecklistJson</pre>
+        <p class="text-sm text-slate-600 whitespace-pre-wrap">@Model.Observacoes</p>
+    </section>
+
+    <section class="card space-y-4">
+        <h3 class="card-title">Anexos da vistoria</h3>
+        @if (!Model.Documentos.Any())
+        {
+            <p class="text-sm text-slate-500">Nenhum documento anexado.</p>
+        }
+        else
+        {
+            <table class="table text-sm">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Arquivo</th>
+                        <th>Enviado em</th>
+                        <th>Responsável</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var documento in Model.Documentos)
+                    {
+                        <tr>
+                            <td>@documento.Tipo</td>
+                            <td>@documento.NomeArquivo</td>
+                            <td>@documento.CreatedAt.ToLocalTime():dd/MM/yyyy HH:mm</td>
+                            <td>@documento.CreatedBy</td>
+                            <td class="text-right">
+                                <a class="text-blue-600 hover:underline" asp-action="DownloadDocumento" asp-route-id="@Model.Id" asp-route-documentoId="@documento.Id">Download</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        <form class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end" method="post" enctype="multipart/form-data" asp-action="UploadDocumento" asp-route-id="@Model.Id">
+            @Html.AntiForgeryToken()
+            <div class="md:col-span-2">
+                <label class="input-label" for="tipoDocumento">Tipo</label>
+                <input class="input" id="tipoDocumento" name="Tipo" required />
+            </div>
+            <div class="md:col-span-2">
+                <label class="input-label" for="arquivoDocumento">Arquivo</label>
+                <input class="input" id="arquivoDocumento" type="file" name="Arquivo" required />
+            </div>
+            <div class="flex justify-end md:col-span-4">
+                <button class="btn-secondary" type="submit">Adicionar anexo</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card space-y-4">
+        <h3 class="card-title">Atualizar andamento</h3>
+        <form asp-action="RegistrarAndamento" method="post" class="space-y-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div>
+                <label class="input-label" for="novoStatus">Novo status</label>
+                <select class="input" name="status" id="novoStatus">
+                    @foreach (var status in Enum.GetValues<InspectionStatus>())
+                    {
+                        <option value="@status" selected="@(status == Model.Status)">@status</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="input-label" for="checklistJson">Checklist atualizado</label>
+                <textarea id="checklistJson" name="checklistJson" class="input" rows="4">@Model.ChecklistJson</textarea>
+            </div>
+            <div>
+                <label class="input-label" for="observacoes">Observações</label>
+                <textarea id="observacoes" name="observacoes" class="input" rows="4">@Model.Observacoes</textarea>
+            </div>
+            <div>
+                <label class="input-label" for="pendenciasTexto">Pendências identificadas (uma por linha)</label>
+                <textarea id="pendenciasTexto" name="pendenciasTexto" class="input" rows="4">@Model.PendenciasTexto</textarea>
+                <p class="text-xs text-slate-500">Itens listados geram pendências críticas vinculadas à vistoria.</p>
+            </div>
+            <div class="flex justify-end">
+                <button class="btn btn-primary" type="submit">Registrar andamento</button>
+            </div>
+        </form>
+    </section>
+</section>

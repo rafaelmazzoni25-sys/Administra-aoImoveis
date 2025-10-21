@@ -1,0 +1,232 @@
+@model ActivityDetailViewModel
+@{
+    ViewData["Title"] = $"Atividade - {Model.Activity.Titulo}";
+    var statusBadgeClass = Model.Activity.Status switch
+    {
+        AdministraAoImoveis.Web.Domain.Enumerations.ActivityStatus.Concluida => "bg-emerald-500",
+        AdministraAoImoveis.Web.Domain.Enumerations.ActivityStatus.Cancelada => "bg-slate-400",
+        AdministraAoImoveis.Web.Domain.Enumerations.ActivityStatus.Bloqueada => "bg-amber-500",
+        _ when Model.EstaAtrasada => "bg-red-500",
+        _ when Model.EmRisco => "bg-amber-400",
+        _ => "bg-slate-600"
+    };
+}
+
+@functions {
+    private static string FormatDuration(TimeSpan tempo)
+    {
+        var valor = tempo.Duration();
+        if (valor.TotalDays >= 1)
+        {
+            return $"{valor.Days}d {valor.Hours}h";
+        }
+
+        if (valor.TotalHours >= 1)
+        {
+            return $"{valor.Hours}h {valor.Minutes}min";
+        }
+
+        if (valor.TotalMinutes >= 1)
+        {
+            return $"{valor.Minutes}min";
+        }
+
+        return $"{valor.Seconds}s";
+    }
+
+    private static string FormatRemaining(ActivityDetailViewModel model)
+    {
+        if (!model.TempoRestante.HasValue)
+        {
+            return "Sem prazo definido";
+        }
+
+        var prefixo = model.TempoRestante.Value.TotalSeconds < 0 ? "Atrasada há " : "Restam ";
+        return prefixo + FormatDuration(model.TempoRestante.Value);
+    }
+
+    private static string FormatDateTime(DateTime data) => data.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+}
+
+<section class="space-y-6">
+    <div class="flex justify-between items-center">
+        <a class="text-sm text-slate-600 hover:underline" asp-action="Index">&larr; Voltar para lista</a>
+        <span class="text-xs uppercase tracking-wide text-slate-500">@Model.Activity.Tipo</span>
+    </div>
+
+    @if (TempData["StatusMessage"] is string statusMessage)
+    {
+        <div class="alert-success">@statusMessage</div>
+    }
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert-warning">
+            <p class="font-semibold">Ocorreram erros ao processar a requisição:</p>
+            <ul class="list-disc list-inside text-sm">
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <article class="card space-y-4">
+        <header class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+            <div class="space-y-1">
+                <h1 class="text-2xl font-semibold text-slate-800">@Model.Activity.Titulo</h1>
+                <p class="text-slate-600">@Model.Activity.Descricao</p>
+            </div>
+            <div class="text-right space-y-1">
+                <span class=$"inline-flex items-center px-3 py-1 rounded-full text-white text-xs font-medium {statusBadgeClass}">@Model.Activity.Status</span>
+                <div class="text-sm">Prioridade: <span class="font-semibold">@Model.Activity.Prioridade</span></div>
+                <div class="text-sm">Responsável: <span class="font-semibold">@Model.Activity.Responsavel</span></div>
+                <div class="text-sm">Setor: <span class="font-semibold">@Model.Activity.Setor</span></div>
+            </div>
+        </header>
+        <div class="grid md:grid-cols-3 gap-4 text-sm text-slate-600">
+            <div class="space-y-1">
+                <span class="block text-xs uppercase tracking-wide text-slate-500">Prazo</span>
+                <p>@(Model.Activity.DataLimite.HasValue ? FormatDateTime(Model.Activity.DataLimite.Value) : "Sem data definida")</p>
+                <p class="text-xs text-slate-500">@FormatRemaining(Model)</p>
+            </div>
+            <div class="space-y-1">
+                <span class="block text-xs uppercase tracking-wide text-slate-500">Criada em</span>
+                <p>@FormatDateTime(Model.Activity.CreatedAt)</p>
+                <p class="text-xs text-slate-500">Atualizada em: @(Model.Activity.UpdatedAt.HasValue ? FormatDateTime(Model.Activity.UpdatedAt.Value) : "--")</p>
+            </div>
+            <div class="space-y-2">
+                <span class="block text-xs uppercase tracking-wide text-slate-500">Consumo de SLA</span>
+                @{
+                    var percentual = Math.Clamp(Model.PercentualSlaConsumido, 0, 100);
+                    var barraClasse = Model.EstaAtrasada
+                        ? "bg-red-500"
+                        : Model.EmRisco
+                            ? "bg-amber-400"
+                            : "bg-emerald-500";
+                    var percentualTexto = $"{percentual:F0}%";
+                }
+                <div class="h-2 bg-slate-200 rounded">
+                    <div class="h-2 rounded @barraClasse" style="width:@percentualTexto"></div>
+                </div>
+                <p class="text-xs text-slate-500">@Model.PercentualSlaConsumido:F0% consumido</p>
+            </div>
+        </div>
+    </article>
+
+    <div class="grid gap-6 md:grid-cols-3">
+        <article class="card md:col-span-2 space-y-4">
+            <h2 class="card-title">Atualizar atividade</h2>
+            <form asp-action="Update" method="post" asp-route-id="@Model.Activity.Id" class="space-y-4">
+                @Html.AntiForgeryToken()
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="label" asp-for="Atualizacao.Status">Status</label>
+                        <select class="input" asp-for="Atualizacao.Status" asp-items="Html.GetEnumSelectList<AdministraAoImoveis.Web.Domain.Enumerations.ActivityStatus>()"></select>
+                    </div>
+                    <div>
+                        <label class="label" asp-for="Atualizacao.Prioridade">Prioridade</label>
+                        <select class="input" asp-for="Atualizacao.Prioridade" asp-items="Html.GetEnumSelectList<AdministraAoImoveis.Web.Domain.Enumerations.PriorityLevel>()"></select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="label" asp-for="Atualizacao.Responsavel">Responsável</label>
+                        <input class="input" asp-for="Atualizacao.Responsavel" />
+                        <span class="text-xs text-red-600" asp-validation-for="Atualizacao.Responsavel"></span>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="label" asp-for="Atualizacao.DataLimite">Prazo</label>
+                        <input class="input" type="datetime-local" asp-for="Atualizacao.DataLimite" />
+                        <span class="text-xs text-red-600" asp-validation-for="Atualizacao.DataLimite"></span>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button class="btn-primary" type="submit">Salvar alterações</button>
+                </div>
+            </form>
+        </article>
+
+        <article class="card space-y-4">
+            <h2 class="card-title">Anexos</h2>
+            <ul class="space-y-2 text-sm">
+                @if (!Model.Anexos.Any())
+                {
+                    <li class="text-slate-500">Nenhum anexo enviado.</li>
+                }
+                else
+                {
+                    foreach (var anexo in Model.Anexos)
+                    {
+                        <li class="flex items-center justify-between gap-2">
+                            <div>
+                                <p class="font-medium">@anexo.Arquivo?.NomeOriginal</p>
+                                <p class="text-xs text-slate-500">Enviado em @FormatDateTime(anexo.CreatedAt)</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <a class="btn-secondary" asp-action="DownloadAttachment" asp-route-id="@Model.Activity.Id" asp-route-attachmentId="@anexo.Id">Baixar</a>
+                                <form asp-action="DeleteAttachment" asp-route-id="@Model.Activity.Id" asp-route-attachmentId="@anexo.Id" method="post" onsubmit="return confirm('Remover este anexo?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-danger">Excluir</button>
+                                </form>
+                            </div>
+                        </li>
+                    }
+                }
+            </ul>
+            <form asp-action="UploadAttachment" asp-route-id="@Model.Activity.Id" method="post" enctype="multipart/form-data" class="space-y-3">
+                @Html.AntiForgeryToken()
+                <div>
+                    <label class="label" for="Arquivo">Novo anexo</label>
+                    <input class="input" type="file" id="Arquivo" name="Arquivo" />
+                    @if (ViewData.ModelState.TryGetValue("Arquivo", out var arquivoErrors) && arquivoErrors.Errors.Count > 0)
+                    {
+                        <span class="text-xs text-red-600">@arquivoErrors.Errors[0].ErrorMessage</span>
+                    }
+                </div>
+                <div class="flex justify-end">
+                    <button class="btn-secondary" type="submit">Enviar</button>
+                </div>
+            </form>
+        </article>
+    </div>
+
+    <article class="card space-y-4">
+        <div class="flex items-center justify-between">
+            <h2 class="card-title">Histórico e comentários</h2>
+            <span class="text-xs text-slate-500">@Model.Comentarios.Count comentário(s)</span>
+        </div>
+        <div class="space-y-3">
+            @if (!Model.Comentarios.Any())
+            {
+                <p class="text-slate-500 text-sm">Nenhum comentário registrado até o momento.</p>
+            }
+            else
+            {
+                foreach (var comentario in Model.Comentarios)
+                {
+                    <div class="border border-slate-200 rounded p-3 text-sm">
+                        <header class="flex justify-between text-xs text-slate-500">
+                            <span class="font-semibold text-slate-700">@comentario.Autor</span>
+                            <time>@FormatDateTime(comentario.ComentadoEm)</time>
+                        </header>
+                        <p class="mt-2 whitespace-pre-wrap">@comentario.Texto</p>
+                    </div>
+                }
+            }
+        </div>
+        <form asp-action="AddComment" asp-route-id="@Model.Activity.Id" method="post" class="space-y-3">
+            @Html.AntiForgeryToken()
+            <div>
+                <label class="label" for="Texto">Novo comentário</label>
+                <textarea class="input" id="Texto" name="Texto" rows="3">@Context.Request.Form["Texto"]</textarea>
+                @if (ViewData.ModelState.TryGetValue("Texto", out var textoErrors) && textoErrors.Errors.Count > 0)
+                {
+                    <span class="text-xs text-red-600">@textoErrors.Errors[0].ErrorMessage</span>
+                }
+            </div>
+            <div class="flex justify-end">
+                <button class="btn-primary" type="submit">Registrar comentário</button>
+            </div>
+        </form>
+    </article>
+</section>

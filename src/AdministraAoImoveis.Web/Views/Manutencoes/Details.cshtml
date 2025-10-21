@@ -1,0 +1,185 @@
+@model MaintenanceOrderDetailViewModel
+@{
+    ViewData["Title"] = "Detalhes da ordem";
+}
+<section class="space-y-6">
+    <header class="card">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h2 class="card-title">@Model.Titulo</h2>
+                <p class="text-sm text-slate-500">Imóvel @Model.ImovelCodigo - @Model.ImovelTitulo</p>
+            </div>
+            <a class="btn-secondary" asp-action="Index">Voltar</a>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4 text-sm">
+            <div>
+                <div class="text-xs text-slate-500 uppercase">Status</div>
+                <div class="font-semibold">@Model.Status</div>
+            </div>
+            <div>
+                <div class="text-xs text-slate-500 uppercase">Responsável</div>
+                <div class="font-semibold">@(!string.IsNullOrWhiteSpace(Model.Responsavel) ? Model.Responsavel : "Não informado")</div>
+            </div>
+            <div>
+                <div class="text-xs text-slate-500 uppercase">Previsão</div>
+                <div class="font-semibold">@(Model.PrevisaoConclusao?.ToString("dd/MM/yyyy") ?? "-")</div>
+            </div>
+            <div>
+                <div class="text-xs text-slate-500 uppercase">Custo real</div>
+                <div class="font-semibold">@(Model.CustoReal?.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) ?? "-")</div>
+            </div>
+        </div>
+    </header>
+
+    <section class="card">
+        <h3 class="card-title">Resumo</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+                <div class="text-xs text-slate-500 uppercase">Criada em</div>
+                <div class="font-semibold">@Model.CriadoEm:dd/MM/yyyy HH:mm</div>
+            </div>
+            <div>
+                <div class="text-xs text-slate-500 uppercase">Início da execução</div>
+                <div class="font-semibold">@(Model.IniciadaEm?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+            </div>
+            <div>
+                <div class="text-xs text-slate-500 uppercase">Conclusão</div>
+                <div class="font-semibold">@(Model.DataConclusao?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <div class="text-xs text-slate-500 uppercase">Descrição</div>
+            <p class="text-sm leading-relaxed whitespace-pre-wrap">@Model.Descricao</p>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.Contato))
+        {
+            <div class="mt-2 text-sm text-slate-500">
+                Contato: <span class="font-semibold text-slate-700">@Model.Contato</span>
+            </div>
+        }
+        @if (Model.VistoriaId.HasValue)
+        {
+            <div class="mt-2 text-sm">
+                Vinculada à vistoria: <span class="font-semibold">@Model.VistoriaDescricao</span>
+            </div>
+        }
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="card space-y-4">
+            <h3 class="card-title">Atualizar ordem</h3>
+            <form asp-action="Update" asp-route-id="@Model.Id" method="post">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="label" asp-for="Atualizacao.Status"></label>
+                        <select class="input" asp-for="Atualizacao.Status" asp-items="Html.GetEnumSelectList<MaintenanceOrderStatus>()"></select>
+                        <span class="text-xs text-red-600" asp-validation-for="Atualizacao.Status"></span>
+                    </div>
+                    <div>
+                        <label class="label" asp-for="Atualizacao.Categoria"></label>
+                        <input class="input" asp-for="Atualizacao.Categoria" />
+                        <span class="text-xs text-red-600" asp-validation-for="Atualizacao.Categoria"></span>
+                    </div>
+                    <div>
+                        <label class="label" asp-for="Atualizacao.Responsavel"></label>
+                        <input class="input" asp-for="Atualizacao.Responsavel" />
+                        <span class="text-xs text-red-600" asp-validation-for="Atualizacao.Responsavel"></span>
+                    </div>
+                    <div>
+                        <label class="label" asp-for="Atualizacao.Contato"></label>
+                        <input class="input" asp-for="Atualizacao.Contato" />
+                        <span class="text-xs text-red-600" asp-validation-for="Atualizacao.Contato"></span>
+                    </div>
+                    <div>
+                        <label class="label" asp-for="Atualizacao.CustoEstimado"></label>
+                        <input class="input" asp-for="Atualizacao.CustoEstimado" />
+                        <span class="text-xs text-red-600" asp-validation-for="Atualizacao.CustoEstimado"></span>
+                    </div>
+                    <div>
+                        <label class="label" asp-for="Atualizacao.CustoReal"></label>
+                        <input class="input" asp-for="Atualizacao.CustoReal" />
+                        <span class="text-xs text-red-600" asp-validation-for="Atualizacao.CustoReal"></span>
+                    </div>
+                    <div>
+                        <label class="label" asp-for="Atualizacao.PrevisaoConclusao"></label>
+                        <input class="input" asp-for="Atualizacao.PrevisaoConclusao" type="date" />
+                        <span class="text-xs text-red-600" asp-validation-for="Atualizacao.PrevisaoConclusao"></span>
+                    </div>
+                </div>
+                <div>
+                    <label class="label" asp-for="Atualizacao.Observacoes"></label>
+                    <textarea class="input h-24" asp-for="Atualizacao.Observacoes"></textarea>
+                    <span class="text-xs text-red-600" asp-validation-for="Atualizacao.Observacoes"></span>
+                </div>
+                <div class="flex justify-end">
+                    <button class="btn-primary" type="submit">Aplicar alterações</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="card-title">Documentos</h3>
+                <form asp-action="UploadDocumento" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="flex items-center gap-2">
+                    <div class="flex flex-col">
+                        <input class="input" asp-for="NovoDocumento.Arquivo" type="file" />
+                        <span class="text-xs text-red-600" asp-validation-for="NovoDocumento.Arquivo"></span>
+                    </div>
+                    <input class="input" placeholder="Categoria" name="NovoDocumento.Categoria" value="@Model.NovoDocumento.Categoria" />
+                    <button class="btn-secondary" type="submit">Enviar</button>
+                </form>
+            </div>
+            @if (!Model.Documentos.Any())
+            {
+                <p class="empty-state">Nenhum documento anexado.</p>
+            }
+            else
+            {
+                <ul class="divide-y divide-slate-200 text-sm">
+                    @foreach (var doc in Model.Documentos)
+                    {
+                        <li class="py-3 flex items-center justify-between gap-3">
+                            <div>
+                                <div class="font-semibold">@doc.Nome</div>
+                                <div class="text-xs text-slate-500">Categoria: @(string.IsNullOrWhiteSpace(doc.Categoria) ? "-" : doc.Categoria)</div>
+                                <div class="text-xs text-slate-400">Enviado em @doc.UploadEm:dd/MM/yyyy HH:mm</div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <a class="btn-secondary" asp-action="DownloadDocumento" asp-route-id="@Model.Id" asp-route-documentoId="@doc.Id">Baixar</a>
+                                <form asp-action="RemoverDocumento" asp-route-id="@Model.Id" method="post" class="inline">
+                                    <input type="hidden" name="documentoId" value="@doc.Id" />
+                                    <button class="btn-danger" type="submit">Remover</button>
+                                </form>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    </section>
+
+    <section class="card">
+        <h3 class="card-title">Linha do tempo</h3>
+        @if (!Model.Timeline.Any())
+        {
+            <p class="empty-state">Nenhum evento registrado.</p>
+        }
+        else
+        {
+            <ol class="space-y-3">
+                @foreach (var item in Model.Timeline)
+                {
+                    <li class="p-3 bg-slate-50 rounded">
+                        <div class="text-xs text-slate-500">@item.OcorreuEm:dd/MM/yyyy HH:mm - @item.Usuario</div>
+                        <div class="font-semibold">@item.Titulo</div>
+                        <div class="text-sm text-slate-600">@item.Descricao</div>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
