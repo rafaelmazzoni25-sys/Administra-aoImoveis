@@ -47,8 +47,11 @@ git clone <URL-do-repositorio> AdministraAoImoveis
 
 No Visual Studio:
 
-1. Menu **Build ▸ Build Solution** (atalho `Ctrl+Shift+B`).
-2. Verifique se a compilação conclui sem erros.
+1. Confirme no canto superior que a configuração está em **Debug** (ou **Release**, se desejar gerar um pacote final) e a plataforma em **Any CPU**.
+2. Menu **Build ▸ Restore NuGet Packages** para garantir que todas as dependências sejam baixadas antes da primeira compilação.
+3. Menu **Build ▸ Build Solution** (atalho `Ctrl+Shift+B`). Use **Build ▸ Rebuild Solution** caso esteja atualizando a partir de uma versão anterior.
+4. Acompanhe o painel **Output** (exiba via **View ▸ Output**) para validar se a compilação terminou sem erros. Corrija eventuais mensagens listadas nessa janela.
+5. (Opcional) Abra o **Test Explorer** (*Test ▸ Test Explorer*) e execute **Run All Tests** para confirmar que os testes automatizados compilam e executam corretamente.
 
 ## 7. Executar a aplicação
 
