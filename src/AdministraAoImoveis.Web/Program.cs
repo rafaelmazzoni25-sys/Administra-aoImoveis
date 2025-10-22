@@ -39,6 +39,22 @@ builder.Services
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(
+        PolicyNames.ContractsRead,
+        policy => policy.RequireRole(RoleSets.ContractsReaders));
+    options.AddPolicy(
+        PolicyNames.ContractsManage,
+        policy => policy.RequireRole(RoleSets.ContractsManagers));
+    options.AddPolicy(
+        PolicyNames.PropertyDocumentsRead,
+        policy => policy.RequireRole(RoleSets.PropertyDocumentReaders));
+    options.AddPolicy(
+        PolicyNames.PropertyDocumentsManage,
+        policy => policy.RequireRole(RoleSets.PropertyDocumentManagers));
+});
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 

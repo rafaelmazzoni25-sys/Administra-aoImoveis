@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize(Roles = RoleNames.GestaoContratos)]
+[Authorize]
 public class ContratosController : Controller
 {
     private readonly ApplicationDbContext _context;
@@ -27,6 +27,7 @@ public class ContratosController : Controller
         _fileStorageService = fileStorageService;
     }
 
+    [Authorize(Policy = PolicyNames.ContractsRead)]
     public async Task<IActionResult> Index(bool incluirEncerrados = false, CancellationToken cancellationToken = default)
     {
         var query = _context.Contratos
@@ -69,6 +70,7 @@ public class ContratosController : Controller
         return View(model);
     }
 
+    [Authorize(Policy = PolicyNames.ContractsManage)]
     [HttpGet]
     public async Task<IActionResult> Create(Guid propertyId, CancellationToken cancellationToken = default)
     {
@@ -123,6 +125,7 @@ public class ContratosController : Controller
         return View(model);
     }
 
+    [Authorize(Policy = PolicyNames.ContractsManage)]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(ContractGenerationInputModel input, CancellationToken cancellationToken = default)
@@ -212,6 +215,7 @@ public class ContratosController : Controller
         return RedirectToAction(nameof(Details), new { id = resultado.Contract!.Id });
     }
 
+    [Authorize(Policy = PolicyNames.ContractsRead)]
     public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken = default)
     {
         var contrato = await _context.Contratos
@@ -271,6 +275,7 @@ public class ContratosController : Controller
         return View(model);
     }
 
+    [Authorize(Policy = PolicyNames.ContractsRead)]
     [HttpGet("{id:guid}/documentos/{documentId:guid}/download")]
     public async Task<IActionResult> Download(Guid id, Guid documentId, CancellationToken cancellationToken = default)
     {
@@ -300,6 +305,7 @@ public class ContratosController : Controller
         return File(stream, documento.Arquivo.ConteudoTipo, documento.Arquivo.NomeOriginal);
     }
 
+    [Authorize(Policy = PolicyNames.ContractsManage)]
     [HttpPost("{id:guid}/ativar")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Ativar(Guid id, CancellationToken cancellationToken = default)
@@ -324,6 +330,7 @@ public class ContratosController : Controller
         return RedirectToAction(nameof(Details), new { id });
     }
 
+    [Authorize(Policy = PolicyNames.ContractsManage)]
     [HttpPost("{id:guid}/anexos")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Anexar(Guid id, ContractAttachmentInputModel input, CancellationToken cancellationToken = default)
@@ -361,6 +368,7 @@ public class ContratosController : Controller
         return RedirectToAction(nameof(Details), new { id });
     }
 
+    [Authorize(Policy = PolicyNames.ContractsManage)]
     [HttpPost("{id:guid}/encerrar")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Encerrar(Guid id, ContractClosureInputModel input, CancellationToken cancellationToken = default)
