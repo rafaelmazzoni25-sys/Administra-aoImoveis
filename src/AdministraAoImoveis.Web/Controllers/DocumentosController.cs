@@ -16,7 +16,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdministraAoImoveis.Web.Controllers;
 
-[Authorize(Roles = RoleNames.GestaoImoveis)]
+[Authorize]
 [Route("Imoveis/{propertyId:guid}/Documentos")]
 public class DocumentosController : Controller
 {
@@ -39,6 +39,7 @@ public class DocumentosController : Controller
         _auditTrailService = auditTrailService;
     }
 
+    [Authorize(Policy = PolicyNames.PropertyDocumentsRead)]
     [HttpGet]
     public async Task<IActionResult> Index(Guid propertyId, CancellationToken cancellationToken)
     {
@@ -54,6 +55,7 @@ public class DocumentosController : Controller
         return View(model);
     }
 
+    [Authorize(Policy = PolicyNames.PropertyDocumentsManage)]
     [HttpPost("upload")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Upload(
@@ -164,6 +166,7 @@ public class DocumentosController : Controller
         return RedirectToAction(nameof(Index), new { propertyId });
     }
 
+    [Authorize(Policy = PolicyNames.PropertyDocumentsManage)]
     [HttpPost("{documentId:guid}/review")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Review(
@@ -232,6 +235,7 @@ public class DocumentosController : Controller
         return RedirectToAction(nameof(Index), new { propertyId });
     }
 
+    [Authorize(Policy = PolicyNames.PropertyDocumentsManage)]
     [HttpPost("{documentId:guid}/aceite")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RegistrarAceite(
@@ -294,6 +298,7 @@ public class DocumentosController : Controller
         return RedirectToAction(nameof(Index), new { propertyId });
     }
 
+    [Authorize(Policy = PolicyNames.PropertyDocumentsManage)]
     [HttpPost("modelos")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GerarModelo(
@@ -318,6 +323,7 @@ public class DocumentosController : Controller
         return File(Encoding.UTF8.GetBytes(html), "text/html", nomeArquivo);
     }
 
+    [Authorize(Policy = PolicyNames.PropertyDocumentsRead)]
     [HttpGet("{documentId:guid}/download")]
     public async Task<IActionResult> Download(Guid propertyId, Guid documentId, CancellationToken cancellationToken)
     {
