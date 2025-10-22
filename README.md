@@ -48,8 +48,8 @@ Esta solução contém a base do sistema web local solicitado, construída com A
 
 ## Próximos Passos
 
-- Publicar migrações EF Core para versionar o schema do banco de dados.
-- Refinar políticas de autorização em nível de ação e aplicar testes automatizados de autorização.
-- Expandir a cobertura de testes automatizados exercitados pelo pipeline de CI.
+- Expandir a suíte de testes automatizados além das políticas de autorização atuais, cobrindo fluxos críticos como geração de contratos, expiração automática de documentos e movimentação financeira, garantindo que os invariantes de negócio estejam protegidos por testes.
+- Enriquecer o seeding inicial de dados para incluir imóveis, proprietários, negociações e documentos de exemplo, facilitando a validação/homologação offline sem depender de cadastros manuais após a criação do usuário administrador.
+- Transformar o script de backup fornecido em uma rotina operacional oficial (ex.: tarefa agendada no Windows), documentando execução, testes de restauração e alertas para garantir a disponibilidade das bases e anexos locais.
 
 O projeto foi estruturado para operar 100% offline e pode ser estendido conforme as regras de negócio detalhadas no documento original.
