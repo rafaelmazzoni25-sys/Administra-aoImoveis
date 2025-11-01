@@ -7,6 +7,7 @@ using AdministraAoImoveis.Web.Services.Contracts;
 using AdministraAoImoveis.Web.Services.DocumentExpiration;
 using Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,11 +17,49 @@ builder.Services.Configure<FileStorageOptions>(
 builder.Services.Configure<PropertyDocumentExpirationOptions>(
     builder.Configuration.GetSection(PropertyDocumentExpirationOptions.SectionName));
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                       ?? "Server=(localdb)\\MSSQLLocalDB;Database=AdministraAoImoveis;Trusted_Connection=True;MultipleActiveResultSets=true";
+var configuredProvider = builder.Configuration["DatabaseProvider"];
+var selectedProvider = string.IsNullOrWhiteSpace(configuredProvider)
+    ? (OperatingSystem.IsWindows() ? "SqlServer" : "Sqlite")
+    : configuredProvider;
+var useSqlite = string.Equals(selectedProvider, "Sqlite", StringComparison.OrdinalIgnoreCase);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+{
+    if (useSqlite)
+    {
+        var sqliteConnectionString = builder.Configuration.GetConnectionString("SqliteConnection");
+
+        if (string.IsNullOrWhiteSpace(sqliteConnectionString))
+        {
+            var dataDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
+            Directory.CreateDirectory(dataDirectory);
+            sqliteConnectionString = $"Data Source={Path.Combine(dataDirectory, "app.db")}";
+        }
+        else
+        {
+            var connectionBuilder = new SqliteConnectionStringBuilder(sqliteConnectionString);
+            var dataSourcePath = connectionBuilder.DataSource;
+            var absoluteDataSourcePath = Path.IsPathRooted(dataSourcePath)
+                ? dataSourcePath
+                : Path.Combine(builder.Environment.ContentRootPath, dataSourcePath);
+            var dataDirectory = Path.GetDirectoryName(absoluteDataSourcePath);
+
+            if (!string.IsNullOrWhiteSpace(dataDirectory))
+            {
+                Directory.CreateDirectory(dataDirectory);
+            }
+        }
+
+        options.UseSqlite(sqliteConnectionString);
+    }
+    else
+    {
+        var sqlServerConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                                     ?? "Server=(localdb)\\MSSQLLocalDB;Database=AdministraAoImoveis;Trusted_Connection=True;MultipleActiveResultSets=true";
+
+        options.UseSqlServer(sqlServerConnectionString);
+    }
+});
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
