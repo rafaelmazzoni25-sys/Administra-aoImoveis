@@ -7,6 +7,7 @@ using AdministraAoImoveis.Web.Services.Contracts;
 using AdministraAoImoveis.Web.Services.DocumentExpiration;
 using Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,8 +18,10 @@ builder.Services.Configure<PropertyDocumentExpirationOptions>(
     builder.Configuration.GetSection(PropertyDocumentExpirationOptions.SectionName));
 
 var configuredProvider = builder.Configuration["DatabaseProvider"];
-var useSqlite = string.Equals(configuredProvider, "Sqlite", StringComparison.OrdinalIgnoreCase)
-                || !OperatingSystem.IsWindows();
+var selectedProvider = string.IsNullOrWhiteSpace(configuredProvider)
+    ? (OperatingSystem.IsWindows() ? "SqlServer" : "Sqlite")
+    : configuredProvider;
+var useSqlite = string.Equals(selectedProvider, "Sqlite", StringComparison.OrdinalIgnoreCase);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -31,6 +34,20 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
             var dataDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
             Directory.CreateDirectory(dataDirectory);
             sqliteConnectionString = $"Data Source={Path.Combine(dataDirectory, "app.db")}";
+        }
+        else
+        {
+            var connectionBuilder = new SqliteConnectionStringBuilder(sqliteConnectionString);
+            var dataSourcePath = connectionBuilder.DataSource;
+            var absoluteDataSourcePath = Path.IsPathRooted(dataSourcePath)
+                ? dataSourcePath
+                : Path.Combine(builder.Environment.ContentRootPath, dataSourcePath);
+            var dataDirectory = Path.GetDirectoryName(absoluteDataSourcePath);
+
+            if (!string.IsNullOrWhiteSpace(dataDirectory))
+            {
+                Directory.CreateDirectory(dataDirectory);
+            }
         }
 
         options.UseSqlite(sqliteConnectionString);
