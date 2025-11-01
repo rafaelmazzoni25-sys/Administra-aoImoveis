@@ -16,11 +16,33 @@ builder.Services.Configure<FileStorageOptions>(
 builder.Services.Configure<PropertyDocumentExpirationOptions>(
     builder.Configuration.GetSection(PropertyDocumentExpirationOptions.SectionName));
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                       ?? "Server=(localdb)\\MSSQLLocalDB;Database=AdministraAoImoveis;Trusted_Connection=True;MultipleActiveResultSets=true";
+var configuredProvider = builder.Configuration["DatabaseProvider"];
+var useSqlite = string.Equals(configuredProvider, "Sqlite", StringComparison.OrdinalIgnoreCase)
+                || !OperatingSystem.IsWindows();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+{
+    if (useSqlite)
+    {
+        var sqliteConnectionString = builder.Configuration.GetConnectionString("SqliteConnection");
+
+        if (string.IsNullOrWhiteSpace(sqliteConnectionString))
+        {
+            var dataDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
+            Directory.CreateDirectory(dataDirectory);
+            sqliteConnectionString = $"Data Source={Path.Combine(dataDirectory, "app.db")}";
+        }
+
+        options.UseSqlite(sqliteConnectionString);
+    }
+    else
+    {
+        var sqlServerConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                                     ?? "Server=(localdb)\\MSSQLLocalDB;Database=AdministraAoImoveis;Trusted_Connection=True;MultipleActiveResultSets=true";
+
+        options.UseSqlServer(sqlServerConnectionString);
+    }
+});
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
