@@ -70,7 +70,7 @@ public class ContractService : IContractService
 
         try
         {
-            var pdfBytes = OpenHtmlToPdf.Pdf
+            var pdfBytes = Pdf
                 .From(html)
                 .Content();
 
