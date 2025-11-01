@@ -9,7 +9,6 @@ using AdministraAoImoveis.Web.Infrastructure.FileStorage;
 using AdministraAoImoveis.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using OpenHtmlToPdf;
 
 namespace AdministraAoImoveis.Web.Services.Contracts;
 
@@ -70,11 +69,9 @@ public class ContractService : IContractService
 
         try
         {
-            var pdfBytes = Pdf
-                .From(html)
-                .Content();
+            var pdfBytes = ContractPdfGenerator.GeneratePdfBytes(html);
 
-            if (pdfBytes.Length > 0)
+            if (pdfBytes is { Length: > 0 })
             {
                 await using var pdfStream = new MemoryStream(pdfBytes);
                 storedFile = await _fileStorageService.SaveAsync(
@@ -83,6 +80,12 @@ public class ContractService : IContractService
                     pdfStream,
                     ContractConstants.StorageCategory,
                     cancellationToken);
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "OpenHtmlToPdf.Pdf não retornou conteúdo para o contrato do imóvel {PropertyId}. Arquivo HTML será utilizado.",
+                    property.Id);
             }
         }
         catch (Exception ex)
@@ -562,5 +565,39 @@ public class ContractService : IContractService
             _logger.LogError(ex, "Erro ao encerrar contrato {ContractId}", contrato.Id);
             return ContractOperationResult.Failure("Erro ao encerrar o contrato. Consulte os logs para mais detalhes.");
         }
+    }
+}
+
+internal static class ContractPdfGenerator
+{
+    private const string PdfTypeName = "OpenHtmlToPdf.Pdf, OpenHtmlToPdf";
+
+    public static byte[]? GeneratePdfBytes(string html)
+    {
+        var pdfType = Type.GetType(PdfTypeName, throwOnError: false);
+        if (pdfType is null)
+        {
+            return null;
+        }
+
+        var fromMethod = pdfType.GetMethod("From", new[] { typeof(string) });
+        if (fromMethod is null)
+        {
+            return null;
+        }
+
+        var builder = fromMethod.Invoke(null, new object[] { html });
+        if (builder is null)
+        {
+            return null;
+        }
+
+        var contentMethod = builder.GetType().GetMethod("Content", Type.EmptyTypes);
+        if (contentMethod is null)
+        {
+            return null;
+        }
+
+        return contentMethod.Invoke(builder, null) as byte[];
     }
 }
