@@ -315,7 +315,7 @@ public class ManutencoesController : Controller
             ordem.CustoReal = input.CustoReal;
         }
 
-        var previsao = input.PrevisaoConclusao.HasValue ? NormalizeDate(input.PrevisaoConclusao.Value) : null;
+        DateTime? previsao = input.PrevisaoConclusao.HasValue ? NormalizeDate(input.PrevisaoConclusao.Value) : null;
         if (ordem.PrevisaoConclusao != previsao)
         {
             alteracoes.Add("Previsão conclusão: {FormatDate(ordem.PrevisaoConclusao)} → {FormatDate(previsao)}");
@@ -515,7 +515,7 @@ public class ManutencoesController : Controller
             })
             .ToListAsync(cancellationToken);
 
-        var vistorias = Array.Empty<SelectListItem>();
+        IReadOnlyCollection<SelectListItem> vistorias = Array.Empty<SelectListItem>();
 
         if (input.ImovelId.HasValue)
         {

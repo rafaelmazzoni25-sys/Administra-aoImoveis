@@ -1,13 +1,14 @@
 @model AuditLogListViewModel
+@using System.Collections.Generic
 @{
     ViewData["Title"] = "Auditoria";
     string FormatDate(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
-    var exportParams = new
+    var exportParams = new Dictionary<string, string>
     {
-        inicio = Model.Inicio.ToString("o"),
-        fim = Model.Fim.ToString("o"),
-        entidade = Model.Entidade,
-        usuario = Model.Usuario
+        ["inicio"] = Model.Inicio.ToString("o"),
+        ["fim"] = Model.Fim.ToString("o"),
+        ["entidade"] = Model.Entidade ?? string.Empty,
+        ["usuario"] = Model.Usuario ?? string.Empty
     };
 }
 

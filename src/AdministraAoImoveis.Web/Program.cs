@@ -5,6 +5,7 @@ using AdministraAoImoveis.Web.Infrastructure.Logging;
 using AdministraAoImoveis.Web.Services;
 using AdministraAoImoveis.Web.Services.Contracts;
 using AdministraAoImoveis.Web.Services.DocumentExpiration;
+using Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 

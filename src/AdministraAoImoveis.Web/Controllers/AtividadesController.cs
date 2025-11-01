@@ -412,7 +412,7 @@ public class AtividadesController : Controller
             {
                 attachment.Id,
                 Arquivo = storedFile.NomeOriginal,
-                storedFile.Id
+                ArquivoId = storedFile.Id
             }),
             cancellationToken);
 

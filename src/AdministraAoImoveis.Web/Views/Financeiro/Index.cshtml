@@ -161,10 +161,14 @@
                                             <select id="status-@i" name="NovoStatus" class="input">
                                                 @foreach (var status in item.TransicoesPermitidas)
                                                 {
-                                                    var selectedAttribute = status == item.Atualizacao.NovoStatus
-                                                        ? "selected=\"selected\""
-                                                        : string.Empty;
-                                                    <option value="@status" @Html.Raw(selectedAttribute)>@status</option>
+                                                    if (status == item.Atualizacao.NovoStatus)
+                                                    {
+                                                        <option value="@status" selected>@status</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@status">@status</option>
+                                                    }
                                                 }
                                             </select>
                                         </div>

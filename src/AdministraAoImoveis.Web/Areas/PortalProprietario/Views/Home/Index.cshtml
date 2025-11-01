@@ -167,14 +167,14 @@
                                     <ul class="space-y-1">
                                         @foreach (var manutencao in imovel.ManutencoesEmAberto)
                                         {
-                                            @{
-                                                var previsao = manutencao.PrevisaoConclusao.HasValue
-                                                    ? manutencao.PrevisaoConclusao.Value.ToLocalTime().ToString("dd/MM/yyyy")
-                                                    : "sem data definida";
-                                            }
                                             <li>
                                                 <span class="font-medium">@manutencao.Titulo</span> · @manutencao.Status<br />
-                                                <span class="text-xs text-slate-500">Responsável: @manutencao.Responsavel | Previsto para @previsao</span>
+                                                <span class="text-xs text-slate-500">
+                                                    Responsável: @manutencao.Responsavel |
+                                                    Previsto para @(manutencao.PrevisaoConclusao.HasValue
+                                                        ? manutencao.PrevisaoConclusao.Value.ToLocalTime().ToString("dd/MM/yyyy")
+                                                        : "sem data definida")
+                                                </span>
                                             </li>
                                         }
                                     </ul>
