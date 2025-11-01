@@ -22,10 +22,10 @@
             <div>
                 <dt class="font-semibold text-slate-600">Valor sugerido</dt>
                 <dd>
-                    @if (Model.Negotiations.FirstOrDefault(n => n.Id == Model.Input.NegotiationId) is { ValorProposta: { } proposta })
-                    {
-                        @proposta.Value.ToString("C", cultura)
-                    }
+                @if (Model.Negotiations.FirstOrDefault(n => n.Id == Model.Input.NegotiationId) is { ValorProposta: { } proposta })
+                {
+                    @proposta.ToString("C", cultura)
+                }
                     else
                     {
                         <span>—</span>
